@@ -111,6 +111,10 @@ final class ApiPlatformExtension extends Extension implements PrependExtensionIn
         // Load DB Driver
         $loader->load(sprintf('doctrine_%s.xml', $config['db_driver']));
 
+        if (!class_exists('phpDocumentor\Reflection\DocBlockFactoryInterface')) {
+            $container->removeDefinition('api_platform.metadata.resource.metadata_factory.php_doc');
+        }
+
         // FOSUser support
         if ($config['enable_fos_user']) {
             $loader->load('fos_user.xml');
