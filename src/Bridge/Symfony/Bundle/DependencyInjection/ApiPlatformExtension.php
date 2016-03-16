@@ -108,11 +108,18 @@ final class ApiPlatformExtension extends Extension implements PrependExtensionIn
 
         $bundles = $container->getParameter('kernel.bundles');
 
-        // Load DB Driver
-        $loader->load(sprintf('doctrine_%s.xml', $config['db_driver']));
-
         if (!class_exists('phpDocumentor\Reflection\DocBlockFactoryInterface')) {
             $container->removeDefinition('api_platform.metadata.resource.metadata_factory.php_doc');
+        }
+
+        //  Doctrine ORM support
+        if ($config['enable_doctrine_orm']) {
+            $loader->load('doctrine_orm.xml');
+        }
+
+        //  Doctrine MongoDB ODM support
+        if ($config['enable_doctrine_mongodb_odm']) {
+            $loader->load('doctrine_mongodb.xml');
         }
 
         // FOSUser support
