@@ -11,6 +11,7 @@
 
 namespace ApiPlatform\Core\Bridge\Doctrine\Orm\Filter;
 
+use ApiPlatform\Core\Bridge\Doctrine\Filter\AbstractFilter;
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Util\QueryNameGenerator;
 use ApiPlatform\Core\Exception\InvalidArgumentException;
 use Doctrine\Common\Persistence\ManagerRegistry;
@@ -22,7 +23,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
  *
  * @author Lee Siong Chan <ahlee2326@me.com>
  */
-class RangeFilter extends AbstractFilter
+class RangeFilter extends AbstractFilter implements FilterInterface
 {
     const PARAMETER_BETWEEN = 'between';
     const PARAMETER_GREATER_THAN = 'gt';

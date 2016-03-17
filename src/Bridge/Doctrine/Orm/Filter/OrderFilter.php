@@ -11,6 +11,8 @@
 
 namespace ApiPlatform\Core\Bridge\Doctrine\Orm\Filter;
 
+use ApiPlatform\Core\Bridge\Doctrine\Filter\AbstractFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Util\QueryNameGenerator;
 use Doctrine\Common\Persistence\ManagerRegistry;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,7 +24,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * @author Kévin Dunglas <dunglas@gmail.com>
  * @author Théo FIDRY <theo.fidry@gmail.com>
  */
-class OrderFilter extends AbstractFilter
+class OrderFilter extends AbstractFilter implements FilterInterface
 {
     /**
      * @var string Keyword used to retrieve the value.
