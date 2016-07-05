@@ -198,6 +198,7 @@ abstract class AbstractFilter
         }
 
         $parentAlias = $rootAlias;
+        $alias = null;
 
         foreach ($propertyParts['associations'] as $association) {
             $alias = QueryNameGenerator::generateJoinAlias($association);
