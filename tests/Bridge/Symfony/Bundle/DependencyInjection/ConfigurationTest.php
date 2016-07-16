@@ -55,6 +55,8 @@ class ConfigurationTest extends \PHPUnit_Framework_TestCase
                     'items_per_page_parameter_name' => 'itemsPerPage',
                 ],
             ],
+            'enable_doctrine_mongodb_odm' => false,
+            'enable_doctrine_orm' => true,
         ], $config);
     }
 }

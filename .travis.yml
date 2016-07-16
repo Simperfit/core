@@ -23,6 +23,10 @@ before_install:
     - phpunit --self-update
     - if [ "$SYMFONY_VERSION" != "" ]; then composer require "symfony/symfony:${SYMFONY_VERSION}" --no-update; fi;
     - npm install -g swagger-cli
+    - if [ ! `php -r 'echo extension_loaded("mongodb");'` ]; then
+      pecl install mongodb || /bin/true;
+      echo 'extension=mongodb.so' >> ~/.phpenv/versions/$(phpenv version-name)/etc/conf.d/travis.ini
+      fi
 
 install:
     - composer update --no-interaction --prefer-dist
