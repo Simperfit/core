@@ -36,10 +36,10 @@ final class AnnotationPropertyMetadataFactory implements PropertyMetadataFactory
     /**
      * {@inheritdoc}
      */
-    public function create(string $resourceClass, string $property, array $options = []) : PropertyMetadata
+    public function create(string $resourceClass, string $property, array $options = []): PropertyMetadata
     {
         $parentPropertyMetadata = null;
-        if (isset($this->decorated)) {
+        if ($this->decorated) {
             try {
                 $parentPropertyMetadata = $this->decorated->create($resourceClass, $property, $options);
             } catch (PropertyNotFoundException $propertyNotFoundException) {
@@ -63,13 +63,11 @@ final class AnnotationPropertyMetadataFactory implements PropertyMetadataFactory
 
         foreach (array_merge(Reflection::ACCESSOR_PREFIXES, Reflection::MUTATOR_PREFIXES) as $prefix) {
             $methodName = $prefix.ucfirst($property);
-
             if (!$reflectionClass->hasMethod($methodName)) {
                 continue;
             }
 
             $reflectionMethod = $reflectionClass->getMethod($methodName);
-
             if (!$reflectionMethod->isPublic()) {
                 continue;
             }
@@ -94,18 +92,18 @@ final class AnnotationPropertyMetadataFactory implements PropertyMetadataFactory
      *
      * @return PropertyMetadata
      */
-    private function handleNotFound(PropertyMetadata $parentPropertyMetadata = null, string $resourceClass, string $property) : PropertyMetadata
+    private function handleNotFound(PropertyMetadata $parentPropertyMetadata = null, string $resourceClass, string $property): PropertyMetadata
     {
-        if (isset($parentPropertyMetadata)) {
+        if (null !== $parentPropertyMetadata) {
             return $parentPropertyMetadata;
         }
 
         throw new PropertyNotFoundException(sprintf('Property "%s" of class "%s" not found.', $property, $resourceClass));
     }
 
-    private function createMetadata(ApiProperty $annotation, PropertyMetadata $parentPropertyMetadata = null) : PropertyMetadata
+    private function createMetadata(ApiProperty $annotation, PropertyMetadata $parentPropertyMetadata = null): PropertyMetadata
     {
-        if (!$parentPropertyMetadata) {
+        if (null === $parentPropertyMetadata) {
             return new PropertyMetadata(
                 null,
                 $annotation->description,
@@ -116,27 +114,28 @@ final class AnnotationPropertyMetadataFactory implements PropertyMetadataFactory
                 $annotation->required,
                 $annotation->identifier,
                 $annotation->iri,
+                null,
                 $annotation->attributes
             );
         }
 
         $propertyMetadata = $parentPropertyMetadata;
-        foreach (['description', 'readable', 'writable', 'readableLink', 'writableLink', 'required', 'iri', 'identifier', 'attributes'] as $property) {
-            $this->createWith($propertyMetadata, $property, $annotation->$property);
+        foreach ([['get', 'description'], ['is', 'readable'], ['is', 'writable'], ['is', 'readableLink'], ['is', 'writableLink'], ['is', 'required'], ['get', 'iri'], ['is', 'identifier'], ['get', 'attributes']] as $property) {
+            $propertyMetadata = $this->createWith($propertyMetadata, $property, $annotation->{$property[1]});
         }
 
         return $propertyMetadata;
     }
 
-    private function createWith(PropertyMetadata $propertyMetadata, string $property, $value) : PropertyMetadata
+    private function createWith(PropertyMetadata $propertyMetadata, array $property, $value): PropertyMetadata
     {
-        $getter = 'get'.ucfirst($property);
+        $getter = $property[0].ucfirst($property[1]);
 
         if (null !== $propertyMetadata->$getter()) {
             return $propertyMetadata;
         }
 
-        $wither = 'with'.ucfirst($property);
+        $wither = 'with'.ucfirst($property[1]);
 
         return $propertyMetadata->$wither($value);
     }

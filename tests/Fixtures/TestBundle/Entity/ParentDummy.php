@@ -12,6 +12,7 @@
 namespace ApiPlatform\Core\Tests\Fixtures\TestBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 /**
  * Parent Dummy.
@@ -23,9 +24,10 @@ use Doctrine\ORM\Mapping as ORM;
 class ParentDummy
 {
     /**
-     * @var int The age.
+     * @var int The age
      *
      * @ORM\Column(type="integer", nullable=true)
+     * @Groups({"friends"})
      */
     private $age;
 

@@ -36,7 +36,7 @@ final class CachedResourceMetadataFactory implements ResourceMetadataFactoryInte
     /**
      * {@inheritdoc}
      */
-    public function create(string $resourceClass) : ResourceMetadata
+    public function create(string $resourceClass): ResourceMetadata
     {
         $cacheKey = self::CACHE_KEY_PREFIX.md5(serialize([$resourceClass]));
 
@@ -52,14 +52,12 @@ final class CachedResourceMetadataFactory implements ResourceMetadataFactoryInte
 
         $resourceMetadata = $this->decorated->create($resourceClass);
 
-        if (isset($cacheItem)) {
-            try {
-                $cacheItem->set($resourceMetadata);
-                $this->cacheItemPool->save($cacheItem);
-            } catch (CacheException $e) {
-                // do nothing
-            }
+        if (!isset($cacheItem)) {
+            return $resourceMetadata;
         }
+
+        $cacheItem->set($resourceMetadata);
+        $this->cacheItemPool->save($cacheItem);
 
         return $resourceMetadata;
     }

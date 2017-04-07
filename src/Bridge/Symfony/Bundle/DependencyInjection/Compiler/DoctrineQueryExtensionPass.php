@@ -30,6 +30,11 @@ final class DoctrineQueryExtensionPass implements CompilerPassInterface
      */
     public function process(ContainerBuilder $container)
     {
+        // if doctrine not loaded
+        if (!$container->hasDefinition('api_platform.doctrine.metadata_factory')) {
+            return;
+        }
+
         $collectionDataProviderDefinition = $container->getDefinition('api_platform.doctrine.orm.collection_data_provider');
         $itemDataProviderDefinition = $container->getDefinition('api_platform.doctrine.orm.item_data_provider');
 
@@ -50,7 +55,7 @@ final class DoctrineQueryExtensionPass implements CompilerPassInterface
         $extensions = [];
         foreach ($container->findTaggedServiceIds($tag) as $serviceId => $tags) {
             foreach ($tags as $tag) {
-                $priority = isset($tag['priority']) ? $tag['priority'] : 0;
+                $priority = $tag['priority'] ?? 0;
                 $extensions[$priority][] = new Reference($serviceId);
             }
         }

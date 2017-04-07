@@ -15,7 +15,7 @@ use ApiPlatform\Core\Exception\InvalidResourceException;
 use ApiPlatform\Core\Exception\RuntimeException;
 use ApiPlatform\Core\Metadata\Resource\Factory\ResourceMetadataFactoryInterface;
 use ApiPlatform\Core\Metadata\Resource\Factory\ResourceNameCollectionFactoryInterface;
-use ApiPlatform\Core\Naming\ResourcePathNamingStrategyInterface;
+use ApiPlatform\Core\PathResolver\OperationPathResolverInterface;
 use Doctrine\Common\Inflector\Inflector;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Config\Loader\Loader;
@@ -38,16 +38,22 @@ final class ApiLoader extends Loader
     private $fileLoader;
     private $resourceNameCollectionFactory;
     private $resourceMetadataFactory;
-    private $resourcePathGenerator;
+    private $operationPathResolver;
     private $container;
     private $formats;
 
-    public function __construct(KernelInterface $kernel, ResourceNameCollectionFactoryInterface $resourceNameCollectionFactory, ResourceMetadataFactoryInterface $resourceMetadataFactory, ResourcePathNamingStrategyInterface $resourcePathGenerator, ContainerInterface $container, array $formats)
-    {
+    public function __construct(
+        KernelInterface $kernel,
+        ResourceNameCollectionFactoryInterface $resourceNameCollectionFactory,
+        ResourceMetadataFactoryInterface $resourceMetadataFactory,
+        OperationPathResolverInterface $operationPathResolver,
+        ContainerInterface $container,
+        array $formats
+    ) {
         $this->fileLoader = new XmlFileLoader(new FileLocator($kernel->locateResource('@ApiPlatformBundle/Resources/config/routing')));
         $this->resourceNameCollectionFactory = $resourceNameCollectionFactory;
         $this->resourceMetadataFactory = $resourceMetadataFactory;
-        $this->resourcePathGenerator = $resourcePathGenerator;
+        $this->operationPathResolver = $operationPathResolver;
         $this->container = $container;
         $this->formats = $formats;
     }
@@ -61,9 +67,6 @@ final class ApiLoader extends Loader
 
         $this->loadExternalFiles($routeCollection);
 
-        if ($this->container->getParameter('api_platform.enable_swagger')) {
-            $routeCollection->addCollection($this->fileLoader->load('swagger.xml'));
-        }
         foreach ($this->resourceNameCollectionFactory->create() as $resourceClass) {
             $resourceMetadata = $this->resourceMetadataFactory->create($resourceClass);
             $resourceShortName = $resourceMetadata->getShortName();
@@ -72,12 +75,16 @@ final class ApiLoader extends Loader
                 throw new InvalidResourceException(sprintf('Resource %s has no short name defined.', $resourceClass));
             }
 
-            foreach ($resourceMetadata->getCollectionOperations() as $operationName => $operation) {
-                $this->addRoute($routeCollection, $resourceClass, $operationName, $operation, $resourceShortName, true);
+            if (null !== $collectionOperations = $resourceMetadata->getCollectionOperations()) {
+                foreach ($collectionOperations as $operationName => $operation) {
+                    $this->addRoute($routeCollection, $resourceClass, $operationName, $operation, $resourceShortName, true);
+                }
             }
 
-            foreach ($resourceMetadata->getItemOperations() as $operationName => $operation) {
-                $this->addRoute($routeCollection, $resourceClass, $operationName, $operation, $resourceShortName, false);
+            if (null !== $itemOperations = $resourceMetadata->getItemOperations()) {
+                foreach ($itemOperations as $operationName => $operation) {
+                    $this->addRoute($routeCollection, $resourceClass, $operationName, $operation, $resourceShortName, false);
+                }
             }
         }
 
@@ -103,7 +110,6 @@ final class ApiLoader extends Loader
 
         if (isset($this->formats['jsonld'])) {
             $routeCollection->addCollection($this->fileLoader->load('jsonld.xml'));
-            $routeCollection->addCollection($this->fileLoader->load('hydra.xml'));
         }
     }
 
@@ -145,17 +151,7 @@ final class ApiLoader extends Loader
             $actionName = sprintf('%s_%s', $operationName, $collection ? 'collection' : 'item');
         }
 
-        $path = $operation['path'] ?? null;
-
-        if (null === $path) {
-            $path = '/'.$this->resourcePathGenerator->generateResourceBasePath($resourceShortName);
-
-            if (!$collection) {
-                $path .= '/{id}';
-            }
-
-            $path .= '.{_format}';
-        }
+        $path = $this->operationPathResolver->resolveOperationPath($resourceShortName, $operation, $collection);
 
         $resourceRouteName = Inflector::pluralize(Inflector::tableize($resourceShortName));
         $routeName = sprintf('%s%s_%s', self::ROUTE_NAME_PREFIX, $resourceRouteName, $actionName);

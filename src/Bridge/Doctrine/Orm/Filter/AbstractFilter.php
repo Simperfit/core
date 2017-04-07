@@ -11,13 +11,17 @@
 
 namespace ApiPlatform\Core\Bridge\Doctrine\Orm\Filter;
 
-use ApiPlatform\Core\Bridge\Doctrine\Orm\Util\QueryNameGenerator;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Util\QueryNameGeneratorInterface;
 use ApiPlatform\Core\Exception\InvalidArgumentException;
 use ApiPlatform\Core\Util\RequestParser;
 use Doctrine\Common\Persistence\ManagerRegistry;
 use Doctrine\Common\Persistence\Mapping\ClassMetadata;
+use Doctrine\ORM\Query\Expr\Join;
 use Doctrine\ORM\QueryBuilder;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * {@inheritdoc}
@@ -30,13 +34,44 @@ use Symfony\Component\HttpFoundation\Request;
 abstract class AbstractFilter implements FilterInterface
 {
     protected $managerRegistry;
+    protected $requestStack;
+    protected $logger;
     protected $properties;
 
-    public function __construct(ManagerRegistry $managerRegistry, array $properties = null)
+    public function __construct(ManagerRegistry $managerRegistry, RequestStack $requestStack, LoggerInterface $logger = null, array $properties = null)
     {
         $this->managerRegistry = $managerRegistry;
+        $this->requestStack = $requestStack;
+        $this->logger = $logger ?? new NullLogger();
         $this->properties = $properties;
     }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function apply(QueryBuilder $queryBuilder, QueryNameGeneratorInterface $queryNameGenerator, string $resourceClass, string $operationName = null)
+    {
+        $request = $this->requestStack->getCurrentRequest();
+        if (null === $request) {
+            return;
+        }
+
+        foreach ($this->extractProperties($request) as $property => $value) {
+            $this->filterProperty($property, $value, $queryBuilder, $queryNameGenerator, $resourceClass, $operationName);
+        }
+    }
+
+    /**
+     * Passes a property through the filter.
+     *
+     * @param string                      $property
+     * @param mixed                       $value
+     * @param QueryBuilder                $queryBuilder
+     * @param QueryNameGeneratorInterface $queryNameGenerator
+     * @param string                      $resourceClass
+     * @param string|null                 $operationName
+     */
+    abstract protected function filterProperty(string $property, $value, QueryBuilder $queryBuilder, QueryNameGeneratorInterface $queryNameGenerator, string $resourceClass, string $operationName = null);
 
     /**
      * Gets class metadata for the given resource.
@@ -45,7 +80,7 @@ abstract class AbstractFilter implements FilterInterface
      *
      * @return ClassMetadata
      */
-    protected function getClassMetadata(string $resourceClass) : ClassMetadata
+    protected function getClassMetadata(string $resourceClass): ClassMetadata
     {
         return $this
             ->managerRegistry
@@ -60,7 +95,7 @@ abstract class AbstractFilter implements FilterInterface
      *
      * @return bool
      */
-    protected function isPropertyEnabled(string $property) : bool
+    protected function isPropertyEnabled(string $property): bool
     {
         if (null === $this->properties) {
             // to ensure sanity, nested properties must still be explicitly enabled
@@ -79,7 +114,7 @@ abstract class AbstractFilter implements FilterInterface
      *
      * @return bool
      */
-    protected function isPropertyMapped(string $property, string $resourceClass, bool $allowAssociation = false) : bool
+    protected function isPropertyMapped(string $property, string $resourceClass, bool $allowAssociation = false): bool
     {
         if ($this->isPropertyNested($property)) {
             $propertyParts = $this->splitPropertyParts($property);
@@ -99,7 +134,7 @@ abstract class AbstractFilter implements FilterInterface
      *
      * @return bool
      */
-    protected function isPropertyNested(string $property) : bool
+    protected function isPropertyNested(string $property): bool
     {
         return false !== strpos($property, '.');
     }
@@ -112,7 +147,7 @@ abstract class AbstractFilter implements FilterInterface
      *
      * @return ClassMetadata
      */
-    protected function getNestedMetadata(string $resourceClass, array $associations) : ClassMetadata
+    protected function getNestedMetadata(string $resourceClass, array $associations): ClassMetadata
     {
         $metadata = $this->getClassMetadata($resourceClass);
 
@@ -141,7 +176,7 @@ abstract class AbstractFilter implements FilterInterface
      *
      * @return array
      */
-    protected function splitPropertyParts(string $property) : array
+    protected function splitPropertyParts(string $property): array
     {
         $parts = explode('.', $property);
 
@@ -158,7 +193,7 @@ abstract class AbstractFilter implements FilterInterface
      *
      * @return array
      */
-    protected function extractProperties(Request $request) : array
+    protected function extractProperties(Request $request): array
     {
         $needsFixing = false;
 
@@ -180,33 +215,80 @@ abstract class AbstractFilter implements FilterInterface
     /**
      * Adds the necessary joins for a nested property.
      *
-     * @param string       $property
-     * @param string       $rootAlias
-     * @param QueryBuilder $queryBuilder
+     * @param string                      $property
+     * @param string                      $rootAlias
+     * @param QueryBuilder                $queryBuilder
+     * @param QueryNameGeneratorInterface $queryNameGenerator
      *
      * @throws InvalidArgumentException If property is not nested
      *
      * @return array An array where the first element is the join $alias of the leaf entity,
-     *               and the second element is the $field name
+     *               the second element is the $field name
+     *               the third element is the $associations array
      */
-    protected function addJoinsForNestedProperty(string $property, string $rootAlias, QueryBuilder $queryBuilder) : array
+    protected function addJoinsForNestedProperty(string $property, string $rootAlias, QueryBuilder $queryBuilder, QueryNameGeneratorInterface $queryNameGenerator): array
     {
         $propertyParts = $this->splitPropertyParts($property);
-
-        if (0 === count($propertyParts['associations'])) {
-            throw new InvalidArgumentException(sprintf('Cannot add joins for property "%s" - property is not nested.', $property));
-        }
-
         $parentAlias = $rootAlias;
 
         foreach ($propertyParts['associations'] as $association) {
-            $alias = QueryNameGenerator::generateJoinAlias($association);
-            $queryBuilder->leftJoin(sprintf('%s.%s', $parentAlias, $association), $alias);
+            $alias = $this->addJoinOnce($queryBuilder, $queryNameGenerator, $parentAlias, $association);
             $parentAlias = $alias;
         }
 
-        $field = $propertyParts['field'];
+        if (!isset($alias)) {
+            throw new InvalidArgumentException(sprintf('Cannot add joins for property "%s" - property is not nested.', $property));
+        }
 
-        return [$alias, $field];
+        return [$alias, $propertyParts['field'], $propertyParts['associations']];
+    }
+
+    /**
+     * Get the existing join from queryBuilder DQL parts.
+     *
+     * @param QueryBuilder $queryBuilder
+     * @param string       $alias
+     * @param string       $association  the association field
+     *
+     * @return Join|null
+     */
+    private function getExistingJoin(QueryBuilder $queryBuilder, string $alias, string $association)
+    {
+        $parts = $queryBuilder->getDQLPart('join');
+
+        if (!isset($parts['o'])) {
+            return;
+        }
+
+        foreach ($parts['o'] as $join) {
+            if (sprintf('%s.%s', $alias, $association) === $join->getJoin()) {
+                return $join;
+            }
+        }
+    }
+
+    /**
+     * Adds a join to the queryBuilder if none exists.
+     *
+     * @param QueryBuilder                $queryBuilder
+     * @param QueryNameGeneratorInterface $queryNameGenerator
+     * @param string                      $alias
+     * @param string                      $association        the association field
+     *
+     * @return string the new association alias
+     */
+    protected function addJoinOnce(QueryBuilder $queryBuilder, QueryNameGeneratorInterface $queryNameGenerator, string $alias, string $association): string
+    {
+        $join = $this->getExistingJoin($queryBuilder, $alias, $association);
+
+        if (null === $join) {
+            $associationAlias = $queryNameGenerator->generateJoinAlias($association);
+            $queryBuilder
+                ->join(sprintf('%s.%s', $alias, $association), $associationAlias);
+        } else {
+            $associationAlias = $join->getAlias();
+        }
+
+        return $associationAlias;
     }
 }

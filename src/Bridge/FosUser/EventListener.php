@@ -11,13 +11,14 @@
 
 namespace ApiPlatform\Core\Bridge\FosUser;
 
+use ApiPlatform\Core\Util\RequestAttributesExtractor;
 use FOS\UserBundle\Model\UserInterface;
 use FOS\UserBundle\Model\UserManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\GetResponseForControllerResultEvent;
 
 /**
- * Bridges between FOSUserBundle and ApiPlatformBundle.
+ * Bridges between FOSUserBundle and API Platform Core.
  *
  * @author Kévin Dunglas <dunglas@gmail.com>
  * @author Théo FIDRY <theo.fidry@gmail.com>
@@ -38,21 +39,24 @@ final class EventListener
      */
     public function onKernelView(GetResponseForControllerResultEvent $event)
     {
-        $user = $event->getControllerResult();
         $request = $event->getRequest();
-
-        if (!$user instanceof UserInterface || $request->isMethodSafe()) {
+        if (!RequestAttributesExtractor::extractAttributes($request)) {
             return;
         }
 
-        switch ($event->getRequest()->getMethod()) {
+        $user = $event->getControllerResult();
+        if (!$user instanceof UserInterface || $request->isMethodSafe(false)) {
+            return;
+        }
+
+        switch ($request->getMethod()) {
             case Request::METHOD_DELETE:
                 $this->userManager->deleteUser($user);
                 $event->setControllerResult(null);
                 break;
 
             default:
-                $this->userManager->updateUser($user, false);
+                $this->userManager->updateUser($user);
                 break;
         }
     }

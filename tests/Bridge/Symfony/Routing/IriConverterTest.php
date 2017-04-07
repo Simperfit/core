@@ -9,11 +9,11 @@
  * file that was distributed with this source code.
  */
 
-namespace ApiPlatform\Core\Tests\Symfony\Bridge\Bundle\DependencyInjection;
+namespace ApiPlatform\Core\Tests\Bridge\Symfony\Routing;
 
 use ApiPlatform\Core\Bridge\Symfony\Routing\IriConverter;
+use ApiPlatform\Core\Bridge\Symfony\Routing\RouteNameResolverInterface;
 use ApiPlatform\Core\DataProvider\ItemDataProviderInterface;
-use ApiPlatform\Core\Exception\InvalidArgumentException;
 use ApiPlatform\Core\Metadata\Property\Factory\PropertyMetadataFactoryInterface;
 use ApiPlatform\Core\Metadata\Property\Factory\PropertyNameCollectionFactoryInterface;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
@@ -25,96 +25,116 @@ use Symfony\Component\Routing\RouterInterface;
 class IriConverterTest extends \PHPUnit_Framework_TestCase
 {
     /**
-     * @expectedException InvalidArgumentException
+     * @expectedException \ApiPlatform\Core\Exception\InvalidArgumentException
      * @expectedExceptionMessage No route matches "/users/3".
      */
     public function testGetItemFromIriNoRouteException()
     {
-        $propertyNameCollectionFactoryMock = $this->prophesize(PropertyNameCollectionFactoryInterface::class);
-        $propertyMetadataFactoryMock = $this->prophesize(PropertyMetadataFactoryInterface::class);
-        $itemDataProviderMock = $this->prophesize(ItemDataProviderInterface::class);
-        $routerMock = $this->prophesize(RouterInterface::class);
+        $propertyNameCollectionFactoryProphecy = $this->prophesize(PropertyNameCollectionFactoryInterface::class);
 
-        $routerMock->match('/users/3')->willThrow(new RouteNotFoundException())->shouldBeCalledTimes(1);
+        $propertyMetadataFactoryProphecy = $this->prophesize(PropertyMetadataFactoryInterface::class);
+
+        $itemDataProviderProphecy = $this->prophesize(ItemDataProviderInterface::class);
+
+        $routeNameResolverProphecy = $this->prophesize(RouteNameResolverInterface::class);
+
+        $routerProphecy = $this->prophesize(RouterInterface::class);
+        $routerProphecy->match('/users/3')->willThrow(new RouteNotFoundException())->shouldBeCalledTimes(1);
 
         $converter = new IriConverter(
-            $propertyNameCollectionFactoryMock->reveal(),
-            $propertyMetadataFactoryMock->reveal(),
-            $itemDataProviderMock->reveal(),
-            $routerMock->reveal()
+            $propertyNameCollectionFactoryProphecy->reveal(),
+            $propertyMetadataFactoryProphecy->reveal(),
+            $itemDataProviderProphecy->reveal(),
+            $routeNameResolverProphecy->reveal(),
+            $routerProphecy->reveal()
         );
         $converter->getItemFromIri('/users/3');
     }
 
     /**
-     * @expectedException InvalidArgumentException
+     * @expectedException \ApiPlatform\Core\Exception\InvalidArgumentException
      * @expectedExceptionMessage No resource associated to "/users/3".
      */
     public function testGetItemFromIriNoResourceException()
     {
-        $propertyNameCollectionFactoryMock = $this->prophesize(PropertyNameCollectionFactoryInterface::class);
-        $propertyMetadataFactoryMock = $this->prophesize(PropertyMetadataFactoryInterface::class);
-        $itemDataProviderMock = $this->prophesize(ItemDataProviderInterface::class);
-        $routerMock = $this->prophesize(RouterInterface::class);
+        $propertyNameCollectionFactoryProphecy = $this->prophesize(PropertyNameCollectionFactoryInterface::class);
 
-        $routerMock->match('/users/3')->willReturn([])->shouldBeCalledTimes(1);
+        $propertyMetadataFactoryProphecy = $this->prophesize(PropertyMetadataFactoryInterface::class);
+
+        $itemDataProviderProphecy = $this->prophesize(ItemDataProviderInterface::class);
+
+        $routeNameResolverProphecy = $this->prophesize(RouteNameResolverInterface::class);
+
+        $routerProphecy = $this->prophesize(RouterInterface::class);
+        $routerProphecy->match('/users/3')->willReturn([])->shouldBeCalledTimes(1);
 
         $converter = new IriConverter(
-            $propertyNameCollectionFactoryMock->reveal(),
-            $propertyMetadataFactoryMock->reveal(),
-            $itemDataProviderMock->reveal(),
-            $routerMock->reveal()
+            $propertyNameCollectionFactoryProphecy->reveal(),
+            $propertyMetadataFactoryProphecy->reveal(),
+            $itemDataProviderProphecy->reveal(),
+            $routeNameResolverProphecy->reveal(),
+            $routerProphecy->reveal()
         );
         $converter->getItemFromIri('/users/3');
     }
 
     /**
-     * @expectedException InvalidArgumentException
+     * @expectedException \ApiPlatform\Core\Exception\InvalidArgumentException
      * @expectedExceptionMessage Item not found for "/users/3".
      */
     public function testGetItemFromIriItemNotFoundException()
     {
-        $propertyNameCollectionFactoryMock = $this->prophesize(PropertyNameCollectionFactoryInterface::class);
-        $propertyMetadataFactoryMock = $this->prophesize(PropertyMetadataFactoryInterface::class);
-        $itemDataProviderMock = $this->prophesize(ItemDataProviderInterface::class);
-        $routerMock = $this->prophesize(RouterInterface::class);
+        $propertyNameCollectionFactoryProphecy = $this->prophesize(PropertyNameCollectionFactoryInterface::class);
 
-        $routerMock->match('/users/3')->willReturn([
+        $propertyMetadataFactoryProphecy = $this->prophesize(PropertyMetadataFactoryInterface::class);
+
+        $itemDataProviderProphecy = $this->prophesize(ItemDataProviderInterface::class);
+        $itemDataProviderProphecy->getItem('AppBundle\Entity\User', 3, null, [])->shouldBeCalledTimes(1);
+
+        $routeNameResolverProphecy = $this->prophesize(RouteNameResolverInterface::class);
+
+        $routerProphecy = $this->prophesize(RouterInterface::class);
+        $routerProphecy->match('/users/3')->willReturn([
             '_api_resource_class' => 'AppBundle\Entity\User',
             'id' => 3,
         ])->shouldBeCalledTimes(1);
-        $itemDataProviderMock->getItem('AppBundle\Entity\User', 3, null, false)->shouldBeCalledTimes(1);
 
         $converter = new IriConverter(
-            $propertyNameCollectionFactoryMock->reveal(),
-            $propertyMetadataFactoryMock->reveal(),
-            $itemDataProviderMock->reveal(),
-            $routerMock->reveal()
+            $propertyNameCollectionFactoryProphecy->reveal(),
+            $propertyMetadataFactoryProphecy->reveal(),
+            $itemDataProviderProphecy->reveal(),
+            $routeNameResolverProphecy->reveal(),
+            $routerProphecy->reveal()
         );
         $converter->getItemFromIri('/users/3');
     }
 
     public function testGetItemFromIri()
     {
-        $propertyNameCollectionFactoryMock = $this->prophesize(PropertyNameCollectionFactoryInterface::class);
-        $propertyMetadataFactoryMock = $this->prophesize(PropertyMetadataFactoryInterface::class);
-        $itemDataProviderMock = $this->prophesize(ItemDataProviderInterface::class);
-        $routerMock = $this->prophesize(RouterInterface::class);
+        $propertyNameCollectionFactoryProphecy = $this->prophesize(PropertyNameCollectionFactoryInterface::class);
 
-        $routerMock->match('/users/3')->willReturn([
-            '_api_resource_class' => 'AppBundle\Entity\User',
-            'id' => 3,
-        ])->shouldBeCalledTimes(1);
-        $itemDataProviderMock->getItem('AppBundle\Entity\User', 3, null, true)
+        $propertyMetadataFactoryProphecy = $this->prophesize(PropertyMetadataFactoryInterface::class);
+
+        $itemDataProviderProphecy = $this->prophesize(ItemDataProviderInterface::class);
+        $itemDataProviderProphecy->getItem('AppBundle\Entity\User', 3, null, ['fetch_data' => true])
             ->willReturn('foo')
             ->shouldBeCalledTimes(1);
 
+        $routeNameResolverProphecy = $this->prophesize(RouteNameResolverInterface::class);
+
+        $routerProphecy = $this->prophesize(RouterInterface::class);
+        $routerProphecy->match('/users/3')->willReturn([
+            '_api_resource_class' => 'AppBundle\Entity\User',
+            'id' => 3,
+        ])->shouldBeCalledTimes(1);
+
         $converter = new IriConverter(
-            $propertyNameCollectionFactoryMock->reveal(),
-            $propertyMetadataFactoryMock->reveal(),
-            $itemDataProviderMock->reveal(),
-            $routerMock->reveal()
+            $propertyNameCollectionFactoryProphecy->reveal(),
+            $propertyMetadataFactoryProphecy->reveal(),
+            $itemDataProviderProphecy->reveal(),
+            $routeNameResolverProphecy->reveal(),
+            $routerProphecy->reveal()
         );
-        $converter->getItemFromIri('/users/3', true);
+        $converter->getItemFromIri('/users/3', ['fetch_data' => true]);
     }
 }

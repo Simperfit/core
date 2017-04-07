@@ -11,11 +11,11 @@
 
 namespace ApiPlatform\Core\EventListener;
 
-use ApiPlatform\Core\Exception\RuntimeException;
 use ApiPlatform\Core\Serializer\SerializerContextBuilderInterface;
 use ApiPlatform\Core\Util\RequestAttributesExtractor;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
+use Symfony\Component\HttpKernel\Exception\NotAcceptableHttpException;
 use Symfony\Component\Serializer\SerializerInterface;
 
 /**
@@ -44,16 +44,16 @@ final class DeserializeListener
     public function onKernelRequest(GetResponseEvent $event)
     {
         $request = $event->getRequest();
-        if ($request->isMethodSafe() || $request->isMethod(Request::METHOD_DELETE)) {
+        if (
+            $request->isMethodSafe(false)
+            || $request->isMethod(Request::METHOD_DELETE)
+            || !($attributes = RequestAttributesExtractor::extractAttributes($request))
+            || !$attributes['receive']
+        ) {
             return;
         }
 
-        try {
-            $attributes = RequestAttributesExtractor::extractAttributes($request);
-        } catch (RuntimeException $e) {
-            return;
-        }
-
+        $format = $this->getFormat($request);
         $context = $this->serializerContextBuilder->createFromRequest($request, false, $attributes);
 
         $data = $request->attributes->get('data');
@@ -64,32 +64,43 @@ final class DeserializeListener
         $request->attributes->set(
             'data',
             $this->serializer->deserialize(
-                $request->getContent(), $attributes['resource_class'], $this->getFormat($request), $context
+                $request->getContent(), $attributes['resource_class'], $format, $context
             )
         );
     }
 
     /**
-     * Extracts the format form the Content-Type header and fallback to the format of the response.
+     * Extracts the format from the Content-Type header and check that it is supported.
      *
      * @param Request $request
      *
+     * @throws NotAcceptableHttpException
+     *
      * @return string
      */
-    private function getFormat(Request $request) : string
+    private function getFormat(Request $request): string
     {
-        $format = $request->getContentType();
-        if (null !== $format && isset($this->formats[$format])) {
-            return $format;
+        $contentType = $request->headers->get('CONTENT_TYPE');
+        if (null === $contentType) {
+            throw new NotAcceptableHttpException('The "Content-Type" header must exist.');
         }
 
-        $requestFormat = $request->getRequestFormat();
-        if (isset($this->formats[$requestFormat])) {
-            return $requestFormat;
+        $format = $request->getFormat($contentType);
+        if (!isset($this->formats[$format])) {
+            $supportedMimeTypes = [];
+            foreach ($this->formats as $mimeTypes) {
+                foreach ($mimeTypes as $mimeType) {
+                    $supportedMimeTypes[] = $mimeType;
+                }
+            }
+
+            throw new NotAcceptableHttpException(sprintf(
+                'The content-type "%s" is not supported. Supported MIME types are "%s".',
+                $contentType,
+                implode('", "', $supportedMimeTypes)
+            ));
         }
 
-        reset($this->formats);
-
-        return each($this->formats)['key'];
+        return $format;
     }
 }

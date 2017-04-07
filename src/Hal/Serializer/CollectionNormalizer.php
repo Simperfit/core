@@ -55,6 +55,9 @@ final class CollectionNormalizer implements NormalizerInterface, NormalizerAware
     public function normalize($object, $format = null, array $context = [])
     {
         $data = [];
+        $currentPage = 1;
+        $lastPage = 1;
+        $itemsPerPage = 0;
         if (isset($context['api_sub_level'])) {
             foreach ($object as $index => $obj) {
                 $data[$index] = $this->normalizer->normalize($obj, $format, $context);
@@ -64,7 +67,7 @@ final class CollectionNormalizer implements NormalizerInterface, NormalizerAware
         }
 
         $resourceClass = $this->resourceClassResolver->getResourceClass($object, $context['resource_class'] ?? null, true);
-        $context = $this->initContext($resourceClass, $context, $format);
+        $context = $this->initContext($resourceClass, $context);
         $parsed = IriHelper::parseIri($context['request_uri'] ?? '/', $this->pageParameterName);
         $paginated = $isPaginator = $object instanceof PaginatorInterface;
 

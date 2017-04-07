@@ -12,10 +12,10 @@
 namespace ApiPlatform\Core\Tests\Doctrine\Orm\Filter;
 
 use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Util\QueryNameGenerator;
 use ApiPlatform\Core\Tests\Fixtures\TestBundle\Entity\Dummy;
 use Doctrine\Common\Persistence\ManagerRegistry;
 use Doctrine\ORM\EntityRepository;
-use phpmock\phpunit\PHPMock;
 use Symfony\Bridge\Doctrine\Test\DoctrineTestHelper;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -27,8 +27,6 @@ use Symfony\Component\HttpFoundation\RequestStack;
  */
 class OrderFilterTest extends KernelTestCase
 {
-    use PHPMock;
-
     /**
      * @var ManagerRegistry
      */
@@ -57,43 +55,45 @@ class OrderFilterTest extends KernelTestCase
     }
 
     /**
-     * @dataProvider filterProvider
+     * @dataProvider provideApplyTestData
      */
-    public function testApply(array $filterParameters, array $query, $expected)
+    public function testApply(string $orderParameterName, $properties, array $filterParameters, string $expected)
     {
-        $request = Request::create('/api/dummies', 'GET', $query);
+        $request = Request::create('/api/dummies', 'GET', $filterParameters);
+
         $requestStack = new RequestStack();
         $requestStack->push($request);
+
         $queryBuilder = $this->repository->createQueryBuilder('o');
-        $parameter = array_key_exists('parameter', $filterParameters) ? $filterParameters['parameter'] : 'order';
+
         $filter = new OrderFilter(
             $this->managerRegistry,
             $requestStack,
-            $parameter,
-            $filterParameters['properties']
+            $orderParameterName,
+            null,
+            $properties
         );
 
-        $uniqid = $this->getFunctionMock('ApiPlatform\Core\Bridge\Doctrine\Orm\Util', 'uniqid');
-        $uniqid->expects($this->any())->willReturn('123456abcdefg');
+        $filter->apply($queryBuilder, new QueryNameGenerator(), $this->resourceClass);
+        $actual = $queryBuilder->getQuery()->getDQL();
 
-        $filter->apply($queryBuilder, $this->resourceClass);
-        $actual = strtolower($queryBuilder->getQuery()->getDQL());
-        $expected = strtolower($expected);
-
-        $this->assertEquals(
-            $expected,
-            $actual,
-            sprintf('Expected `%s` for this `%s %s` request', $expected, 'GET', $request->getUri())
-        );
+        $this->assertEquals($expected, $actual);
     }
 
     public function testGetDescription()
     {
-        $filter = new OrderFilter($this->managerRegistry, new RequestStack(), 'order', [
-            'id' => null,
-            'name' => null,
-            'foo' => null,
-        ]);
+        $filter = new OrderFilter(
+            $this->managerRegistry,
+            new RequestStack(),
+            'order',
+            null,
+            [
+                'id' => null,
+                'name' => null,
+                'foo' => null,
+            ]
+        );
+
         $this->assertEquals([
             'order[id]' => [
                 'property' => 'id',
@@ -110,7 +110,12 @@ class OrderFilterTest extends KernelTestCase
 
     public function testGetDescriptionDefaultFields()
     {
-        $filter = new OrderFilter($this->managerRegistry, new RequestStack(), 'order');
+        $filter = new OrderFilter(
+            $this->managerRegistry,
+            new RequestStack(),
+            'order'
+        );
+
         $this->assertEquals([
             'order[id]' => [
                 'property' => 'id',
@@ -142,6 +147,11 @@ class OrderFilterTest extends KernelTestCase
                 'type' => 'string',
                 'required' => false,
             ],
+            'order[dummyFloat]' => [
+                'property' => 'dummyFloat',
+                'type' => 'string',
+                'required' => false,
+            ],
             'order[dummyPrice]' => [
                 'property' => 'dummyPrice',
                 'type' => 'string',
@@ -166,21 +176,24 @@ class OrderFilterTest extends KernelTestCase
     }
 
     /**
-     * Providers 3 parameters:
-     *  - filter parameters.
-     *  - properties to test. Keys are the property name. If the value is true, the filter should work on the property,
-     *    otherwise not.
-     *  - expected DQL query.
+     * Provides test data.
+     *
+     * Provides 4 parameters:
+     *  - order parameter name
+     *  - configuration of filterable properties
+     *  - filter parameters
+     *  - expected DQL query
      *
      * @return array
      */
-    public function filterProvider()
+    public function provideApplyTestData(): array
     {
         return [
-            // Properties enabled with valid values
-            [
+            'valid values' => [
+                'order',
                 [
-                    'properties' => ['id' => null, 'name' => null],
+                    'id' => null,
+                    'name' => null,
                 ],
                 [
                     'order' => [
@@ -190,10 +203,11 @@ class OrderFilterTest extends KernelTestCase
                 ],
                 sprintf('SELECT o FROM %s o ORDER BY o.id ASC, o.name DESC', Dummy::class),
             ],
-            // Properties enabled with invalid values
-            [
+            'invalid values' => [
+                'order',
                 [
-                    'properties' => ['id' => null, 'name' => null],
+                    'id' => null,
+                    'name' => null,
                 ],
                 [
                     'order' => [
@@ -203,10 +217,11 @@ class OrderFilterTest extends KernelTestCase
                 ],
                 sprintf('SELECT o FROM %s o ORDER BY o.id ASC', Dummy::class),
             ],
-            // Properties disabled with valid values
-            [
+            'valid values (properties not enabled)' => [
+                'order',
                 [
-                    'properties' => ['id' => null, 'name' => null],
+                    'id' => null,
+                    'name' => null,
                 ],
                 [
                     'order' => [
@@ -216,10 +231,11 @@ class OrderFilterTest extends KernelTestCase
                 ],
                 sprintf('SELECT o FROM %s o ORDER BY o.id ASC', Dummy::class),
             ],
-            // Properties disabled with invalid values
-            [
+            'invalid values (properties not enabled)' => [
+                'order',
                 [
-                    'properties' => ['id' => null, 'name' => null],
+                    'id' => null,
+                    'name' => null,
                 ],
                 [
                     'order' => [
@@ -230,10 +246,11 @@ class OrderFilterTest extends KernelTestCase
                 ],
                 sprintf('SELECT o FROM %s o ORDER BY o.name ASC', Dummy::class),
             ],
-            // Unkown property disabled
-            [
+            'invalid property (property not enabled)' => [
+                'order',
                 [
-                    'properties' => ['id' => null, 'name' => null],
+                    'id' => null,
+                    'name' => null,
                 ],
                 [
                     'order' => [
@@ -242,10 +259,12 @@ class OrderFilterTest extends KernelTestCase
                 ],
                 sprintf('SELECT o FROM %s o', Dummy::class),
             ],
-            // Unkown property enabled
-            [
+            'invalid property (property enabled)' => [
+                'order',
                 [
-                    'properties' => ['id' => null, 'name' => null, 'unknown' => null],
+                    'id' => null,
+                    'name' => null,
+                    'unknown' => null,
                 ],
                 [
                     'order' => [
@@ -254,11 +273,11 @@ class OrderFilterTest extends KernelTestCase
                 ],
                 sprintf('SELECT o FROM %s o', Dummy::class),
             ],
-            // Test with another keyword
-            [
+            'custom order parameter name' => [
+                'customOrder',
                 [
-                    'properties' => ['id' => null, 'name' => null],
-                    'parameter' => 'customOrder',
+                    'id' => null,
+                    'name' => null,
                 ],
                 [
                     'order' => [
@@ -271,11 +290,9 @@ class OrderFilterTest extends KernelTestCase
                 ],
                 sprintf('SELECT o FROM %s o ORDER BY o.name DESC', Dummy::class),
             ],
-            // Test with no list
-            [
-                [
-                    'properties' => null,
-                ],
+            'valid values (all properties enabled)' => [
+                'order',
+                null,
                 [
                     'order' => [
                         'id' => 'asc',
@@ -284,10 +301,12 @@ class OrderFilterTest extends KernelTestCase
                 ],
                 sprintf('SELECT o FROM %s o ORDER BY o.id ASC, o.name ASC', Dummy::class),
             ],
-            // Related properties enabled with valid values
-            [
+            'nested property' => [
+                'order',
                 [
-                    'properties' => ['id' => null, 'name' => null, 'relatedDummy.symfony' => null],
+                    'id' => null,
+                    'name' => null,
+                    'relatedDummy.symfony' => null,
                 ],
                 [
                     'order' => [
@@ -296,12 +315,13 @@ class OrderFilterTest extends KernelTestCase
                         'relatedDummy.symfony' => 'desc',
                     ],
                 ],
-                sprintf('SELECT o FROM %s o LEFT JOIN o.relatedDummy relatedDummy_123456abcdefg ORDER BY o.id ASC, o.name DESC, relatedDummy_123456abcdefg.symfony DESC', Dummy::class),
+                sprintf('SELECT o FROM %s o INNER JOIN o.relatedDummy relatedDummy_a1 ORDER BY o.id ASC, o.name DESC, relatedDummy_a1.symfony DESC', Dummy::class),
             ],
-            // Properties enabled with empty request (default values)
-            [
+            'empty values with default sort direction' => [
+                'order',
                 [
-                    'properties' => ['id' => 'asc', 'name' => 'desc'],
+                    'id' => 'asc',
+                    'name' => 'desc',
                 ],
                 [
                     'order' => [
@@ -310,6 +330,70 @@ class OrderFilterTest extends KernelTestCase
                     ],
                 ],
                 sprintf('SELECT o FROM %s o ORDER BY o.id ASC, o.name DESC', Dummy::class),
+            ],
+            'nulls_smallest (asc)' => [
+                'order',
+                [
+                    'dummyDate' => [
+                        'nulls_comparison' => 'nulls_smallest',
+                    ],
+                    'name' => null,
+                ],
+                [
+                    'order' => [
+                        'dummyDate' => 'asc',
+                        'name' => 'desc',
+                    ],
+                ],
+                sprintf('SELECT o, CASE WHEN o.dummyDate IS NULL THEN 0 ELSE 1 END AS HIDDEN _o_dummyDate_null_rank FROM %s o ORDER BY _o_dummyDate_null_rank ASC, o.dummyDate ASC, o.name DESC', Dummy::class),
+            ],
+            'nulls_smallest (desc)' => [
+                'order',
+                [
+                    'dummyDate' => [
+                        'nulls_comparison' => 'nulls_smallest',
+                    ],
+                    'name' => null,
+                ],
+                [
+                    'order' => [
+                        'dummyDate' => 'desc',
+                        'name' => 'desc',
+                    ],
+                ],
+                sprintf('SELECT o, CASE WHEN o.dummyDate IS NULL THEN 0 ELSE 1 END AS HIDDEN _o_dummyDate_null_rank FROM %s o ORDER BY _o_dummyDate_null_rank DESC, o.dummyDate DESC, o.name DESC', Dummy::class),
+            ],
+            'nulls_largest (asc)' => [
+                'order',
+                [
+                    'dummyDate' => [
+                        'nulls_comparison' => 'nulls_largest',
+                    ],
+                    'name' => null,
+                ],
+                [
+                    'order' => [
+                        'dummyDate' => 'asc',
+                        'name' => 'desc',
+                    ],
+                ],
+                sprintf('SELECT o, CASE WHEN o.dummyDate IS NULL THEN 0 ELSE 1 END AS HIDDEN _o_dummyDate_null_rank FROM %s o ORDER BY _o_dummyDate_null_rank DESC, o.dummyDate ASC, o.name DESC', Dummy::class),
+            ],
+            'nulls_largest (desc)' => [
+                'order',
+                [
+                    'dummyDate' => [
+                        'nulls_comparison' => 'nulls_largest',
+                    ],
+                    'name' => null,
+                ],
+                [
+                    'order' => [
+                        'dummyDate' => 'desc',
+                        'name' => 'desc',
+                    ],
+                ],
+                sprintf('SELECT o, CASE WHEN o.dummyDate IS NULL THEN 0 ELSE 1 END AS HIDDEN _o_dummyDate_null_rank FROM %s o ORDER BY _o_dummyDate_null_rank ASC, o.dummyDate DESC, o.name DESC', Dummy::class),
             ],
         ];
     }

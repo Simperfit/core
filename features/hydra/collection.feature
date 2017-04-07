@@ -8,7 +8,7 @@ Feature: Collections support
     When I send a "GET" request to "/dummies"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -36,7 +36,7 @@ Feature: Collections support
     And I send a "GET" request to "/dummies"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -63,11 +63,14 @@ Feature: Collections support
           "maxItems": 3
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?page=1$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"},
-          "hydra:first": {"pattern": "^/dummies\\?page=1$"},
-          "hydra:last": {"pattern": "^/dummies\\?page=10$"},
-          "hydra:next": {"pattern": "^/dummies\\?page=2$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?page=1$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"},
+            "hydra:first": {"pattern": "^/dummies\\?page=1$"},
+            "hydra:last": {"pattern": "^/dummies\\?page=10$"},
+            "hydra:next": {"pattern": "^/dummies\\?page=2$"}
+          }
         }
       }
     }
@@ -77,7 +80,7 @@ Feature: Collections support
     When I send a "GET" request to "/dummies?page=7"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -104,12 +107,15 @@ Feature: Collections support
           "maxItems": 3
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?page=1$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"},
-          "hydra:first": {"pattern": "^/dummies$"},
-          "hydra:last": {"pattern": "^/dummies\\?page=10$"},
-          "hydra:next": {"pattern": "^/dummies\\?page=8$"},
-          "hydra:previous": {"pattern": "^/dummies\\?page=6$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?page=7$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"},
+            "hydra:first": {"pattern": "^/dummies\\?page=1$"},
+            "hydra:last": {"pattern": "^/dummies\\?page=10$"},
+            "hydra:next": {"pattern": "^/dummies\\?page=8$"},
+            "hydra:previous": {"pattern": "^/dummies\\?page=6$"}
+          }
         }
       }
     }
@@ -119,7 +125,7 @@ Feature: Collections support
     When I send a "GET" request to "/dummies?page=10"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -146,11 +152,14 @@ Feature: Collections support
           "maxItems": 3
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?page=10$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"},
-          "hydra:first": {"pattern": "^/dummies$"},
-          "hydra:last": {"pattern": "^/dummies\\?page=10$"},
-          "hydra:previous": {"pattern": "^/dummies\\?page=9$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?page=10$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"},
+            "hydra:first": {"pattern": "^/dummies\\?page=1$"},
+            "hydra:last": {"pattern": "^/dummies\\?page=10$"},
+            "hydra:previous": {"pattern": "^/dummies\\?page=9$"}
+          }
         },
         "hydra:search": {}
       },
@@ -162,7 +171,7 @@ Feature: Collections support
     When I send a "GET" request to "/dummies?pagination=0"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -186,7 +195,7 @@ Feature: Collections support
     When I send a "GET" request to "/dummies?page=2&itemsPerPage=10"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -202,12 +211,15 @@ Feature: Collections support
           "maxItems": 10
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?page=2\\&itemsPerPage=10$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"},
-          "hydra:first": {"pattern": "^/dummies\\?itemsPerPage=10$"},
-          "hydra:last": {"pattern": "^/dummies\\?itemsPerPage=10\\&page=3$"},
-          "hydra:previous": {"pattern": "^/dummies\\?itemsPerPage=10$"},
-          "hydra:next": {"pattern": "^/dummies\\?itemsPerPage=10\\&page=3$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?itemsPerPage=10&page=2$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"},
+            "hydra:first": {"pattern": "^/dummies\\?itemsPerPage=10&page=1$"},
+            "hydra:last": {"pattern": "^/dummies\\?itemsPerPage=10&page=3$"},
+            "hydra:previous": {"pattern": "^/dummies\\?itemsPerPage=10&page=1$"},
+            "hydra:next": {"pattern": "^/dummies\\?itemsPerPage=10&page=3$"}
+          }
         },
         "hydra:search": {}
       },
@@ -219,7 +231,7 @@ Feature: Collections support
     When I send a "GET" request to "/dummies?page=3"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
   """
   {
@@ -235,7 +247,7 @@ Feature: Collections support
     When I send a "GET" request to "/dummies?id=8"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -256,8 +268,11 @@ Feature: Collections support
           "maxItems": 1
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?id=8$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?id=8$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         },
         "hydra:search": {}
       },
@@ -269,7 +284,7 @@ Feature: Collections support
     When I send a "GET" request to "/dummies?id=%2fdummies%2f8"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -290,8 +305,11 @@ Feature: Collections support
           "maxItems": 1
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?id=%2fdummies%2f8$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?id=%2Fdummies%2F8$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         },
         "hydra:search": {}
       },
@@ -304,7 +322,7 @@ Feature: Collections support
     When I send a "GET" request to "/dummies?name=Dummy%20%238"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -325,8 +343,11 @@ Feature: Collections support
           "maxItems": 1
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?name=Dummy%20%238$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?name=Dummy%20%238$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         },
         "hydra:search": {}
       },

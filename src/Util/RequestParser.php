@@ -14,15 +14,19 @@ namespace ApiPlatform\Core\Util;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Utility functions for working with Symfony HttpFoundation request.
+ * Utility functions for working with Symfony's HttpFoundation request.
  *
  * @internal
  *
  * @author Teoh Han Hui <teohhanhui@gmail.com>
  * @author Vincent Chalamon <vincentchalamon@gmail.com>
  */
-abstract class RequestParser
+final class RequestParser
 {
+    private function __construct()
+    {
+    }
+
     /**
      * Gets a fixed request.
      *
@@ -30,7 +34,7 @@ abstract class RequestParser
      *
      * @return Request
      */
-    public static function parseAndDuplicateRequest(Request $request) : Request
+    public static function parseAndDuplicateRequest(Request $request): Request
     {
         $query = self::parseRequestParams($request->getQueryString() ?? '');
         $body = self::parseRequestParams($request->getContent());
@@ -49,9 +53,11 @@ abstract class RequestParser
      *
      * @return array
      */
-    public static function parseRequestParams(string $source) : array
+    public static function parseRequestParams(string $source): array
     {
-        $source = urldecode($source);
+        // '[' is urlencoded in the input, but we must urldecode it in order
+        // to find it when replacing names with the regexp below.
+        $source = str_replace(urlencode('['), '[', $source);
 
         $source = preg_replace_callback(
             '/(^|(?<=&))[^=[&]+/',
@@ -61,6 +67,7 @@ abstract class RequestParser
             $source
         );
 
+        // parse_str urldecodes both keys and values in resulting array.
         parse_str($source, $params);
 
         return array_combine(array_map('hex2bin', array_keys($params)), $params);

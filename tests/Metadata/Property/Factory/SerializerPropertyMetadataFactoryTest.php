@@ -17,6 +17,8 @@ use ApiPlatform\Core\Metadata\Property\PropertyMetadata;
 use ApiPlatform\Core\Metadata\Resource\Factory\ResourceMetadataFactoryInterface;
 use ApiPlatform\Core\Metadata\Resource\ResourceMetadata;
 use ApiPlatform\Core\Tests\Fixtures\TestBundle\Entity\Dummy;
+use ApiPlatform\Core\Tests\Fixtures\TestBundle\Entity\DummyTableInheritance;
+use ApiPlatform\Core\Tests\Fixtures\TestBundle\Entity\DummyTableInheritanceChild;
 use ApiPlatform\Core\Tests\Fixtures\TestBundle\Entity\RelatedDummy;
 use Symfony\Component\PropertyInfo\Type;
 use Symfony\Component\Serializer\Mapping\AttributeMetadata as SerializerAttributeMetadata;
@@ -117,5 +119,31 @@ class SerializerPropertyMetadataFactoryTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf(PropertyMetadata::class, $actual[2]);
         $this->assertFalse($actual[2]->isReadable());
         $this->assertFalse($actual[2]->isWritable());
+    }
+
+    public function testCreateInherited()
+    {
+        $resourceMetadataFactoryProphecy = $this->prophesize(ResourceMetadataFactoryInterface::class);
+        $resourceMetadataFactoryProphecy->create(DummyTableInheritanceChild::class)->willReturn(new ResourceMetadata())->shouldBeCalled();
+        $resourceMetadataFactory = $resourceMetadataFactoryProphecy->reveal();
+
+        $serializerClassMetadataFactoryProphecy = $this->prophesize(SerializerClassMetadataFactoryInterface::class);
+        $dummySerializerClassMetadata = new SerializerClassMetadata(DummyTableInheritanceChild::class);
+        $serializerClassMetadataFactoryProphecy->getMetadataFor(DummyTableInheritanceChild::class)->willReturn($dummySerializerClassMetadata)->shouldBeCalled();
+        $serializerClassMetadataFactory = $serializerClassMetadataFactoryProphecy->reveal();
+
+        $decoratedProphecy = $this->prophesize(PropertyMetadataFactoryInterface::class);
+        $fooPropertyMetadata = (new PropertyMetadata())
+            ->withType(new Type(Type::BUILTIN_TYPE_ARRAY, true))
+            ->withChildInherited(DummyTableInheritanceChild::class);
+        $decoratedProphecy->create(DummyTableInheritance::class, 'nickname', [])->willReturn($fooPropertyMetadata)->shouldBeCalled();
+        $decorated = $decoratedProphecy->reveal();
+
+        $serializerPropertyMetadataFactory = new SerializerPropertyMetadataFactory($resourceMetadataFactory, $serializerClassMetadataFactory, $decorated);
+
+        $actual = $serializerPropertyMetadataFactory->create(DummyTableInheritance::class, 'nickname');
+
+        $this->assertInstanceOf(PropertyMetadata::class, $actual);
+        $this->assertEquals($actual->isChildInherited(), DummyTableInheritanceChild::class);
     }
 }

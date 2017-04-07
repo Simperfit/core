@@ -15,12 +15,14 @@ use ApiPlatform\Core\Api\IriConverterInterface;
 use ApiPlatform\Core\Api\UrlGeneratorInterface;
 use ApiPlatform\Core\DataProvider\ItemDataProviderInterface;
 use ApiPlatform\Core\Exception\InvalidArgumentException;
+use ApiPlatform\Core\Exception\ItemNotFoundException;
+use ApiPlatform\Core\Exception\RuntimeException;
 use ApiPlatform\Core\Metadata\Property\Factory\PropertyMetadataFactoryInterface;
 use ApiPlatform\Core\Metadata\Property\Factory\PropertyNameCollectionFactoryInterface;
 use ApiPlatform\Core\Util\ClassInfoTrait;
 use Symfony\Component\PropertyAccess\PropertyAccess;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
-use Symfony\Component\Routing\Exception\ExceptionInterface;
+use Symfony\Component\Routing\Exception\ExceptionInterface as RoutingExceptionInterface;
 use Symfony\Component\Routing\RouterInterface;
 
 /**
@@ -35,14 +37,16 @@ final class IriConverter implements IriConverterInterface
     private $propertyNameCollectionFactory;
     private $propertyMetadataFactory;
     private $itemDataProvider;
+    private $routeNameResolver;
     private $router;
     private $propertyAccessor;
 
-    public function __construct(PropertyNameCollectionFactoryInterface $propertyNameCollectionFactory, PropertyMetadataFactoryInterface $propertyMetadataFactory, ItemDataProviderInterface $itemDataProvider, RouterInterface $router, PropertyAccessorInterface $propertyAccessor = null)
+    public function __construct(PropertyNameCollectionFactoryInterface $propertyNameCollectionFactory, PropertyMetadataFactoryInterface $propertyMetadataFactory, ItemDataProviderInterface $itemDataProvider, RouteNameResolverInterface $routeNameResolver, RouterInterface $router, PropertyAccessorInterface $propertyAccessor = null)
     {
         $this->propertyNameCollectionFactory = $propertyNameCollectionFactory;
         $this->propertyMetadataFactory = $propertyMetadataFactory;
         $this->itemDataProvider = $itemDataProvider;
+        $this->routeNameResolver = $routeNameResolver;
         $this->router = $router;
         $this->propertyAccessor = $propertyAccessor ?: PropertyAccess::createPropertyAccessor();
     }
@@ -50,32 +54,32 @@ final class IriConverter implements IriConverterInterface
     /**
      * {@inheritdoc}
      */
-    public function getItemFromIri(string $iri, bool $fetchData = false)
+    public function getItemFromIri(string $iri, array $context = [])
     {
         try {
             $parameters = $this->router->match($iri);
-        } catch (ExceptionInterface $exception) {
-            throw new InvalidArgumentException(sprintf('No route matches "%s".', $iri), $exception->getCode(), $exception);
+        } catch (RoutingExceptionInterface $e) {
+            throw new InvalidArgumentException(sprintf('No route matches "%s".', $iri), $e->getCode(), $e);
         }
 
-        if (!isset($parameters['_api_resource_class']) || !isset($parameters['id'])) {
+        if (!isset($parameters['_api_resource_class'], $parameters['id'])) {
             throw new InvalidArgumentException(sprintf('No resource associated to "%s".', $iri));
         }
 
-        if ($item = $this->itemDataProvider->getItem($parameters['_api_resource_class'], $parameters['id'], null, $fetchData)) {
+        if ($item = $this->itemDataProvider->getItem($parameters['_api_resource_class'], $parameters['id'], null, $context)) {
             return $item;
         }
 
-        throw new InvalidArgumentException(sprintf('Item not found for "%s".', $iri));
+        throw new ItemNotFoundException(sprintf('Item not found for "%s".', $iri));
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getIriFromItem($item, int $referenceType = UrlGeneratorInterface::ABS_PATH) : string
+    public function getIriFromItem($item, int $referenceType = UrlGeneratorInterface::ABS_PATH): string
     {
         $resourceClass = $this->getObjectClass($item);
-        $routeName = $this->getRouteName($resourceClass, false);
+        $routeName = $this->routeNameResolver->getRouteName($resourceClass, false);
 
         $identifiers = $this->generateIdentifiersUrl($this->getIdentifiersFromItem($item));
 
@@ -83,23 +87,15 @@ final class IriConverter implements IriConverterInterface
     }
 
     /**
-     * Generate the identifier url.
-     *
-     * @param array $identifiers
-     *
-     * @return array
+     * {@inheritdoc}
      */
-    public function generateIdentifiersUrl(array $identifiers) : array
+    public function getIriFromResourceClass(string $resourceClass, int $referenceType = UrlGeneratorInterface::ABS_PATH): string
     {
-        if (1 === count($identifiers)) {
-            return [rawurlencode(array_values($identifiers)[0])];
+        try {
+            return $this->router->generate($this->routeNameResolver->getRouteName($resourceClass, true), [], $referenceType);
+        } catch (RoutingExceptionInterface $e) {
+            throw new InvalidArgumentException(sprintf('Unable to generate an IRI for "%s".', $resourceClass), $e->getCode(), $e);
         }
-
-        foreach ($identifiers as $name => $value) {
-            $identifiers[$name] = sprintf('%s=%s', $name, $value);
-        }
-
-        return $identifiers;
     }
 
     /**
@@ -111,7 +107,7 @@ final class IriConverter implements IriConverterInterface
      *
      * @return array
      */
-    private function getIdentifiersFromItem($item) : array
+    private function getIdentifiersFromItem($item): array
     {
         $identifiers = [];
         $resourceClass = $this->getObjectClass($item);
@@ -119,7 +115,8 @@ final class IriConverter implements IriConverterInterface
         foreach ($this->propertyNameCollectionFactory->create($resourceClass) as $propertyName) {
             $propertyMetadata = $this->propertyMetadataFactory->create($resourceClass, $propertyName);
 
-            if (!$propertyMetadata->isIdentifier()) {
+            $identifier = $propertyMetadata->isIdentifier();
+            if (null === $identifier || false === $identifier) {
                 continue;
             }
 
@@ -132,16 +129,22 @@ final class IriConverter implements IriConverterInterface
             $relatedResourceClass = $this->getObjectClass($identifiers[$propertyName]);
             $relatedItem = $identifiers[$propertyName];
 
+            unset($identifiers[$propertyName]);
+
             foreach ($this->propertyNameCollectionFactory->create($relatedResourceClass) as $relatedPropertyName) {
                 $propertyMetadata = $this->propertyMetadataFactory->create($relatedResourceClass, $relatedPropertyName);
 
                 if ($propertyMetadata->isIdentifier()) {
+                    if (isset($identifiers[$propertyName])) {
+                        throw new RuntimeException(sprintf('Composite identifiers not supported in "%s" through relation "%s" of "%s" used as identifier', $relatedResourceClass, $propertyName, $resourceClass));
+                    }
+
                     $identifiers[$propertyName] = $this->propertyAccessor->getValue($relatedItem, $relatedPropertyName);
                 }
             }
 
-            if (empty($identifiers[$propertyName])) {
-                throw new \RuntimeException(sprintf('%s identifiers can not be found', $resourceClass));
+            if (!isset($identifiers[$propertyName])) {
+                throw new RuntimeException(sprintf('No identifier found in "%s" through relation "%s" of "%s" used as identifier', $relatedResourceClass, $propertyName, $resourceClass));
             }
         }
 
@@ -149,46 +152,22 @@ final class IriConverter implements IriConverterInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Generate the identifier url.
+     *
+     * @param array $identifiers
+     *
+     * @return string[]
      */
-    public function getIriFromResourceClass(string $resourceClass, int $referenceType = UrlGeneratorInterface::ABS_PATH) : string
+    private function generateIdentifiersUrl(array $identifiers): array
     {
-        try {
-            return $this->router->generate($this->getRouteName($resourceClass, true), [], $referenceType);
-        } catch (ExceptionInterface $e) {
-            throw new InvalidArgumentException(sprintf('Unable to generate an IRI for "%s".', $resourceClass), $e->getCode(), $e);
-        }
-    }
-
-    /**
-     * Finds the route name for this resource.
-     *
-     * @param string $resourceClass
-     * @param bool   $collection
-     *
-     * @throws InvalidArgumentException
-     *
-     * @return string
-     */
-    private function getRouteName(string $resourceClass, bool $collection) : string
-    {
-        $operationType = $collection ? 'collection' : 'item';
-
-        foreach ($this->router->getRouteCollection()->all() as $routeName => $route) {
-            $currentResourceClass = $route->getDefault('_api_resource_class');
-            $operation = $route->getDefault(sprintf('_api_%s_operation_name', $operationType));
-            $methods = $route->getMethods();
-
-            if ($resourceClass === $currentResourceClass && null !== $operation && (empty($methods) || in_array('GET', $methods))) {
-                $found = true;
-                break;
-            }
+        if (1 === count($identifiers)) {
+            return [rawurlencode(array_values($identifiers)[0])];
         }
 
-        if (!isset($found)) {
-            throw new InvalidArgumentException(sprintf('No route associated with the type "%s".', $resourceClass));
+        foreach ($identifiers as $name => $value) {
+            $identifiers[$name] = sprintf('%s=%s', $name, $value);
         }
 
-        return $routeName;
+        return $identifiers;
     }
 }

@@ -9,7 +9,7 @@ Feature: Date filter on collections
     When I send a "GET" request to "/dummies?dummyDate[after]=2015-04-28"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -29,13 +29,16 @@ Feature: Date filter on collections
                   {"pattern": "^/dummies/29$"}
                 ]
               }
-            },
-            "hydra:view": {
-              "@id": {"pattern": "^/dummies\\?dummyDate\\[after\\]=2015-04-28$"},
-              "@type": {"pattern": "^hydra:PartialCollectionView$"}
             }
           },
           "maxItems": 2
+        },
+        "hydra:view": {
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?dummyDate%5Bafter%5D=2015-04-28$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -44,7 +47,7 @@ Feature: Date filter on collections
     When I send a "GET" request to "/dummies?dummyDate[before]=2015-04-05"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -65,13 +68,93 @@ Feature: Date filter on collections
                   {"pattern": "^/dummies/3$"}
                 ]
               }
-            },
-            "hydra:view": {
-              "@id": {"pattern": "^/dummies\\?dummyDate\\[before\\]=2015-04-05$"},
-              "@type": {"pattern": "^hydra:PartialCollectionView$"}
             }
           },
           "maxItems": 3
+        },
+        "hydra:view": {
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?dummyDate%5Bbefore%5D=2015-04-05&page=1$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
+        }
+      }
+    }
+    """
+
+    When I send a "GET" request to "/dummies?dummyDate[after]=2015-04-28T00:00:00%2B00:00"
+    Then the response status code should be 200
+    And the response should be in JSON
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
+    And the JSON should be valid according to this schema:
+    """
+    {
+      "type": "object",
+      "properties": {
+        "@context": {"pattern": "^/contexts/Dummy$"},
+        "@id": {"pattern": "^/dummies$"},
+        "@type": {"pattern": "^hydra:Collection$"},
+        "hydra:member": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "@id": {
+                "oneOf": [
+                  {"pattern": "^/dummies/28$"},
+                  {"pattern": "^/dummies/29$"}
+                ]
+              }
+            }
+          },
+          "maxItems": 2
+        },
+        "hydra:view": {
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?dummyDate%5Bafter%5D=2015-04-28T00%3A00%3A00%2B00%3A00$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
+        }
+      }
+    }
+    """
+
+    When I send a "GET" request to "/dummies?dummyDate[before]=2015-04-05Z"
+    Then the response status code should be 200
+    And the response should be in JSON
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
+    And the JSON should be valid according to this schema:
+    """
+    {
+      "type": "object",
+      "properties": {
+        "@context": {"pattern": "^/contexts/Dummy$"},
+        "@id": {"pattern": "^/dummies"},
+        "@type": {"pattern": "^hydra:Collection$"},
+        "hydra:member": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "@id": {
+                "oneOf": [
+                  {"pattern": "^/dummies/1$"},
+                  {"pattern": "^/dummies/2$"},
+                  {"pattern": "^/dummies/3$"}
+                ]
+              }
+            }
+          },
+          "maxItems": 3
+        },
+        "hydra:view": {
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?dummyDate%5Bbefore%5D=2015-04-05Z&page=1$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -82,7 +165,7 @@ Feature: Date filter on collections
     When I send a "GET" request to "/dummies?dummyDate[before]=2015-04-05&dummyDate[after]=2015-04-05"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -101,13 +184,16 @@ Feature: Date filter on collections
                   {"pattern": "^/dummies/5$"}
                 ]
               }
-            },
-            "hydra:view": {
-              "@id": {"pattern": "^/dummies\\?dummyDate\\[before\\]=2015-04-05\\&dummyDate\\[after\\]=2015-04-05$"},
-              "@type": {"pattern": "^hydra:PartialCollectionView$"}
             }
           },
           "maxItems": 1
+        },
+        "hydra:view": {
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?dummyDate%5Bbefore%5D=2015-04-05&dummyDate%5Bafter%5D=2015-04-05$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -116,7 +202,7 @@ Feature: Date filter on collections
     When I send a "GET" request to "/dummies?dummyDate[after]=2015-04-05&dummyDate[before]=2015-04-05"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -135,13 +221,16 @@ Feature: Date filter on collections
                   {"pattern": "^/dummies/5$"}
                 ]
               }
-            },
-            "hydra:view": {
-              "@id": {"pattern": "^/dummies\\?dummyDate\\[after\\]=2015-04-05\\&dummyDate\\[before\\]=2015-04-05$"},
-              "@type": {"pattern": "^hydra:PartialCollectionView$"}
             }
           },
           "maxItems": 1
+        },
+        "hydra:view": {
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?dummyDate%5Bafter%5D=2015-04-05&dummyDate%5Bbefore%5D=2015-04-05$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -151,7 +240,7 @@ Feature: Date filter on collections
     When I send a "GET" request to "/dummies?dummyDate[after]=2015-04-06&dummyDate[before]=2015-04-04"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -165,8 +254,11 @@ Feature: Date filter on collections
           "maxItems": 0
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?dummyDate\\[after\\]=2015-04-06\\&dummyDate\\[before\\]=2015-04-04$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?dummyDate%5Bafter%5D=2015-04-06&dummyDate%5Bbefore%5D=2015-04-04$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -178,7 +270,7 @@ Feature: Date filter on collections
     When I send a "GET" request to "/dummies?relatedDummy.dummyDate[after]=2015-04-28"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -199,13 +291,16 @@ Feature: Date filter on collections
                   {"pattern": "^/dummies/60$"}
                 ]
               }
-            },
-            "hydra:view": {
-              "@id": {"pattern": "^/dummies\\?relatedDummy\\.dummyDate\\[after\\]=2015-04-28$"},
-              "@type": {"pattern": "^hydra:PartialCollectionView$"}
             }
           },
           "maxItems": 3
+        },
+        "hydra:view": {
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?relatedDummy\\.dummyDate%5Bafter%5D=2015-04-28$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -214,7 +309,7 @@ Feature: Date filter on collections
     When I send a "GET" request to "/dummies?relatedDummy.dummyDate[after]=2015-04-28&relatedDummy_dummyDate[after]=2015-04-28"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -235,13 +330,55 @@ Feature: Date filter on collections
                   {"pattern": "^/dummies/60$"}
                 ]
               }
-            },
-            "hydra:view": {
-              "@id": {"pattern": "^/dummies\\?relatedDummy\\.dummyDate\\[after\\]=2015-04-28\\&relatedDummy_dummyDate\\[after\\]=2015-04-28$"},
-              "@type": {"pattern": "^hydra:PartialCollectionView$"}
             }
           },
           "maxItems": 3
+        },
+        "hydra:view": {
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?relatedDummy\\.dummyDate%5Bafter%5D=2015-04-28&relatedDummy_dummyDate%5Bafter%5D=2015-04-28$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
+        }
+      }
+    }
+    """
+
+    When I send a "GET" request to "/dummies?relatedDummy.dummyDate[after]=2015-04-28T00:00:00%2B00:00"
+    Then the response status code should be 200
+    And the response should be in JSON
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
+    And the JSON should be valid according to this schema:
+    """
+    {
+      "type": "object",
+      "properties": {
+        "@context": {"pattern": "^/contexts/Dummy$"},
+        "@id": {"pattern": "^/dummies$"},
+        "@type": {"pattern": "^hydra:Collection$"},
+        "hydra:member": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "@id": {
+                "oneOf": [
+                  {"pattern": "^/dummies/58$"},
+                  {"pattern": "^/dummies/59$"},
+                  {"pattern": "^/dummies/60$"}
+                ]
+              }
+            }
+          },
+          "maxItems": 3
+        },
+        "hydra:view": {
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?relatedDummy\\.dummyDate%5Bafter%5D=2015-04-28T00%3A00%3A00%2B00%3A00$"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -254,22 +391,22 @@ Feature: Date filter on collections
     When I send a "GET" request to "/dummies?relatedDummy.dummyDate[after]=2015-04-28"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be equal to:
     """
     {
-          "@context": "\/contexts\/Dummy",
-          "@id": "\/dummies",
+          "@context": "/contexts/Dummy",
+          "@id": "/dummies",
           "@type": "hydra:Collection",
           "hydra:member": [],
           "hydra:totalItems": 0,
           "hydra:view": {
-              "@id": "\/dummies?relatedDummy.dummyDate%5Bafter%5D=2015-04-28",
+              "@id": "/dummies?relatedDummy.dummyDate%5Bafter%5D=2015-04-28",
               "@type": "hydra:PartialCollectionView"
           },
           "hydra:search": {
               "@type": "hydra:IriTemplate",
-              "hydra:template": "\/dummies{?id,id[],name,alias,description,relatedDummy.name,relatedDummy.name[],relatedDummies,relatedDummies[],dummy,order[id],order[name],order[relatedDummy.symfony],dummyDate[before],dummyDate[after],relatedDummy.dummyDate[before],relatedDummy.dummyDate[after],dummyPrice[between],dummyPrice[gt],dummyPrice[gte],dummyPrice[lt],dummyPrice[lte],dummyBoolean,dummyPrice}",
+              "hydra:template": "\/dummies{?id,id[],name,alias,description,relatedDummy.name,relatedDummy.name[],relatedDummies,relatedDummies[],dummy,relatedDummies.name,order[id],order[name],order[relatedDummy.symfony],dummyDate[before],dummyDate[after],relatedDummy.dummyDate[before],relatedDummy.dummyDate[after],dummyFloat[between],dummyFloat[gt],dummyFloat[gte],dummyFloat[lt],dummyFloat[lte],dummyPrice[between],dummyPrice[gt],dummyPrice[gte],dummyPrice[lt],dummyPrice[lte],dummyBoolean,dummyFloat,dummyPrice,description[exists],relatedDummy.name[exists],dummyBoolean[exists]}",
               "hydra:variableRepresentation": "BasicRepresentation",
               "hydra:mapping": [
                   {
@@ -334,6 +471,12 @@ Feature: Date filter on collections
                   },
                   {
                       "@type": "IriTemplateMapping",
+                      "variable": "relatedDummies.name",
+                      "property": "relatedDummies.name",
+                      "required": false
+                  },
+                  {
+                      "@type": "IriTemplateMapping",
                       "variable": "order[id]",
                       "property": "id",
                       "required": false
@@ -376,6 +519,36 @@ Feature: Date filter on collections
                   },
                   {
                       "@type": "IriTemplateMapping",
+                      "variable": "dummyFloat[between]",
+                      "property": "dummyFloat",
+                      "required": false
+                  },
+                  {
+                      "@type": "IriTemplateMapping",
+                      "variable": "dummyFloat[gt]",
+                      "property": "dummyFloat",
+                      "required": false
+                  },
+                  {
+                      "@type": "IriTemplateMapping",
+                      "variable": "dummyFloat[gte]",
+                      "property": "dummyFloat",
+                      "required": false
+                  },
+                  {
+                      "@type": "IriTemplateMapping",
+                      "variable": "dummyFloat[lt]",
+                      "property": "dummyFloat",
+                      "required": false
+                  },
+                  {
+                      "@type": "IriTemplateMapping",
+                      "variable": "dummyFloat[lte]",
+                      "property": "dummyFloat",
+                      "required": false
+                  },
+                  {
+                      "@type": "IriTemplateMapping",
                       "variable": "dummyPrice[between]",
                       "property": "dummyPrice",
                       "required": false
@@ -412,12 +585,35 @@ Feature: Date filter on collections
                   },
                   {
                       "@type": "IriTemplateMapping",
+                      "variable": "dummyFloat",
+                      "property": "dummyFloat",
+                      "required": false
+                  },
+                  {
+                      "@type": "IriTemplateMapping",
                       "variable": "dummyPrice",
                       "property": "dummyPrice",
+                      "required": false
+                  },
+                  {
+                      "@type": "IriTemplateMapping",
+                      "variable": "description[exists]",
+                      "property": "description",
+                      "required": false
+                  },
+                  {
+                      "@type": "IriTemplateMapping",
+                      "variable": "relatedDummy.name[exists]",
+                      "property": "relatedDummy.name",
+                      "required": false
+                  },
+                  {
+                      "@type": "IriTemplateMapping",
+                      "variable": "dummyBoolean[exists]",
+                      "property": "dummyBoolean",
                       "required": false
                   }
               ]
           }
       }
     """
-    

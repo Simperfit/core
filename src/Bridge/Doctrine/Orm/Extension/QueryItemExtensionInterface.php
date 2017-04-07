@@ -11,6 +11,7 @@
 
 namespace ApiPlatform\Core\Bridge\Doctrine\Orm\Extension;
 
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Util\QueryNameGeneratorInterface;
 use Doctrine\ORM\QueryBuilder;
 
 /**
@@ -22,10 +23,12 @@ use Doctrine\ORM\QueryBuilder;
 interface QueryItemExtensionInterface
 {
     /**
-     * @param QueryBuilder $queryBuilder
-     * @param string       $resourceClass
-     * @param array        $identifiers
-     * @param string|null  $operationName
+     * @param QueryBuilder                $queryBuilder
+     * @param QueryNameGeneratorInterface $queryNameGenerator
+     * @param string                      $resourceClass
+     * @param array                       $identifiers
+     * @param string|null                 $operationName
+     * @param array                       $context
      */
-    public function applyToItem(QueryBuilder $queryBuilder, string $resourceClass, array $identifiers, string $operationName = null);
+    public function applyToItem(QueryBuilder $queryBuilder, QueryNameGeneratorInterface $queryNameGenerator, string $resourceClass, array $identifiers, string $operationName = null, array $context = []);
 }

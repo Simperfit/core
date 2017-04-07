@@ -1,11 +1,76 @@
 # Changelog
 
+## 2.0.6
+
+* Correct the XML Schema type generated for floats in the Hydra documentation
+
+## 2.0.5
+
+* Fix a bug when multiple filters are applied
+
+## 2.0.4
+
+* [security] Hide error's message in prod mode when a 500 error occurs
+* Prevent duplicate data validation
+* Fix filter Eager Loading
+* Fix the Hydra documentation for `ConstraintViolationList`
+* Fix some edge cases with the automatic configuration of Symfony
+* Remove calls to `each()` (deprecated since PHP 7.2)
+* Add a missing property in `EagerLoadingExtension`
+
+## 2.0.3
+
+* Fix a bug when handling invalid IRIs
+* Allow to have a property called id even in JSON-LD
+* Exclude static methods from AnnotationPropertyNameCollectionFactory
+* Improve compatibility with Symfony 2.8
+
+## 2.0.2
+
+* Fix the support of the Symfony's serializer @MaxDepth annotation
+* Fix property range of relations in the Hydra doc when an IRI is used
+* Fix an error "api:swagger:export" command when decorating the Swagger normalizer
+* Fix an an error in the Swagger documentation generator when a property has several serialization groups
+
+## 2.0.1
+
+* Various fixes related to automatic eager loading
+* Symfony 3.2 compatibility
+
 ## 2.0.0
 
-* The metadata system has been fully rewritten
+* Full refactoring
+* Use PHP 7
+* Add support for content negotiation
+* Add Swagger/OpenAPI support
+* Integrate Swagger UI
+* Add HAL support
+* Add API Problem support
+* Update the Hydra support to be in sync with the last version of the spec
+* Full rewrite of the metadata system (annotations, YAML and XML formats support)
+* Remove the event system in favor of the builtin Symfony kernel's events
 * Use the ADR pattern
-* Remove the event system in favor of builtin Symfony Kernel events
-* Use string values for `Dunglas\ApiBundle\Doctrine\Orm\Filter\DateFilter` null-management constants
+* Fix a ton of issues
+* `ItemDataproviderInterface`: `fetchData` is now in the context parameterer. `getItemFromIri` is now context aware [7f82fd7](https://github.com/api-platform/core/commit/7f82fd7f96bbb855599de275ffe940c63156fc5d)
+* Constants for event's priorities [2e7b73e](https://github.com/api-platform/core/commit/2e7b73e19ccbeeb8387fa7c4f2282984d4326c1f)
+* Properties mapping with XML/YAML is now possible [ef5d037](https://github.com/api-platform/core/commit/ef5d03741523e35bcecc48decbb92cd7b310a779)
+* Ability to configure and match exceptions with an HTTP status code [e9c1863](https://github.com/api-platform/core/commit/e9c1863164394607f262d975e0f00d51a2ac5a72)
+* Various fixes and improvements (SwaggerUI, filters, stricter property metadata)
+
+## 1.1.1
+
+* Fix a case typo in a namespace alias in the Hydra documentation
+
+## 1.1.0 beta 2
+
+* Allow to configure the default controller to use
+* Ability to add route requirements
+* Add a range filter
+* Search filter: add a case sensitivity setting
+* Search filter: fix the behavior of the search filter when 0 is provided as value
+* Search filter: allow to use identifiers different than id
+* Exclude tests from classmap
+* Fix some deprecations and tests
 
 ## 1.1.0 beta 1
 

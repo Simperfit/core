@@ -19,11 +19,20 @@
             <argument type="service" id="api_platform.metadata.resource.metadata_factory" />
         </service>
 
+        <service id="api_platform.route_name_resolver" class="ApiPlatform\Core\Bridge\Symfony\Routing\RouteNameResolver" public="false">
+            <argument type="service" id="api_platform.router" />
+        </service>
+
+        <service id="api_platform.route_name_resolver.cached" class="ApiPlatform\Core\Bridge\Symfony\Routing\CachedRouteNameResolver" decorates="api_platform.route_name_resolver" decoration-priority="-10" public="false">
+            <argument type="service" id="api_platform.cache.route_name_resolver" />
+            <argument type="service" id="api_platform.route_name_resolver.cached.inner" />
+        </service>
+
         <service id="api_platform.route_loader" class="ApiPlatform\Core\Bridge\Symfony\Routing\ApiLoader" public="false">
             <argument type="service" id="kernel" />
             <argument type="service" id="api_platform.metadata.resource.name_collection_factory" />
             <argument type="service" id="api_platform.metadata.resource.metadata_factory" />
-            <argument type="service" id="api_platform.naming.resource_path_naming_strategy" />
+            <argument type="service" id="api_platform.operation_path_resolver.custom" />
             <argument type="service" id="service_container" />
             <argument>%api_platform.formats%</argument>
 
@@ -38,6 +47,7 @@
             <argument type="service" id="api_platform.metadata.property.name_collection_factory" />
             <argument type="service" id="api_platform.metadata.property.metadata_factory" />
             <argument type="service" id="api_platform.item_data_provider" />
+            <argument type="service" id="api_platform.route_name_resolver" />
             <argument type="service" id="api_platform.router" />
             <argument type="service" id="api_platform.property_accessor" />
         </service>
@@ -55,17 +65,30 @@
             <argument type="service" id="api_platform.resource_class_resolver" />
             <argument type="service" id="api_platform.property_accessor" />
             <argument type="service" id="api_platform.name_converter" on-invalid="ignore" />
+            <argument type="service" id="serializer.mapping.class_metadata_factory" on-invalid="ignore" />
 
             <tag name="serializer.normalizer" />
         </service>
 
-        <!-- Resource path naming strategies -->
+        <!-- Resources Operations path resolver -->
 
-        <service id="api_platform.naming.resource_path_naming_strategy.underscore" class="ApiPlatform\Core\Naming\UnderscoreResourcePathNamingStrategy" public="false" />
-        <service id="api_platform.naming.resource_path_naming_strategy.dash" class="ApiPlatform\Core\Naming\DashResourcePathNamingStrategy" public="false" />
+        <service id="api_platform.operation_path_resolver" alias="api_platform.operation_path_resolver.router" public="false" />
+
+        <service id="api_platform.operation_path_resolver.router" class="ApiPlatform\Core\Bridge\Symfony\Routing\RouterOperationPathResolver" public="false">
+            <argument type="service" id="api_platform.router" />
+            <argument type="service" id="api_platform.operation_path_resolver.custom" />
+        </service>
+
+        <service id="api_platform.operation_path_resolver.custom" class="ApiPlatform\Core\PathResolver\CustomOperationPathResolver" public="false">
+            <argument type="service" id="api_platform.operation_path_resolver.default" />
+        </service>
+
+        <service id="api_platform.operation_path_resolver.underscore" class="ApiPlatform\Core\PathResolver\UnderscoreOperationPathResolver" public="false" />
+        <service id="api_platform.operation_path_resolver.dash" class="ApiPlatform\Core\PathResolver\DashOperationPathResolver" public="false" />
 
         <!-- Event listeners -->
 
+        <!-- kernel.request priority must be < 8 to be executed after the Firewall -->
         <service id="api_platform.listener.request.add_format" class="ApiPlatform\Core\EventListener\AddFormatListener">
             <argument type="service" id="api_platform.negotiator" />
             <argument>%api_platform.formats%</argument>
@@ -73,7 +96,6 @@
             <tag name="kernel.event_listener" event="kernel.request" method="onKernelRequest" priority="7" />
         </service>
 
-        <!-- kernel.request piorities must be >8 to be executed after the firewall -->
         <service id="api_platform.listener.request.read" class="ApiPlatform\Core\EventListener\ReadListener">
             <argument type="service" id="api_platform.collection_data_provider" />
             <argument type="service" id="api_platform.item_data_provider" />
@@ -89,11 +111,18 @@
             <tag name="kernel.event_listener" event="kernel.request" method="onKernelRequest" priority="2" />
         </service>
 
+        <!-- This listener must be executed only when the current object is available -->
+        <service id="api_platform.listener.request.deny_access" class="ApiPlatform\Core\EventListener\DenyAccessListener">
+            <argument type="service" id="api_platform.metadata.resource.metadata_factory" />
+            <argument type="service" id="security.authorization_checker" on-invalid="ignore" />
+
+            <tag name="kernel.event_listener" event="kernel.request" method="onKernelRequest" priority="1" />
+        </service>
+
         <service id="api_platform.listener.view.validate" class="ApiPlatform\Core\Bridge\Symfony\Validator\EventListener\ValidateListener">
             <argument type="service" id="validator" />
             <argument type="service" id="api_platform.metadata.resource.metadata_factory" />
 
-            <tag name="kernel.event_listener" event="kernel.view" method="onKernelView" priority="64" />
             <tag name="kernel.event_listener" event="kernel.view" method="onKernelView" priority="64" />
         </service>
 
@@ -108,6 +137,21 @@
             <tag name="kernel.event_listener" event="kernel.view" method="onKernelView" priority="8" />
         </service>
 
+        <service id="api_platform.listener.exception.validation" class="ApiPlatform\Core\Bridge\Symfony\Validator\EventListener\ValidationExceptionListener">
+            <argument type="service" id="api_platform.serializer" />
+            <argument>%api_platform.error_formats%</argument>
+
+            <tag name="kernel.event_listener" event="kernel.exception" method="onKernelException" />
+        </service>
+
+        <service id="api_platform.listener.exception" class="ApiPlatform\Core\EventListener\ExceptionListener">
+            <argument>api_platform.action.exception</argument>
+            <argument type="service" id="logger" on-invalid="null" />
+
+            <tag name="kernel.event_listener" event="kernel.exception" method="onKernelException" priority="-96" />
+            <tag name="monolog.logger" channel="request" />
+        </service>
+
         <!-- Action -->
 
         <service id="api_platform.action.placeholder" class="ApiPlatform\Core\Action\PlaceholderAction" />
@@ -119,6 +163,26 @@
 
         <service id="api_platform.action.entrypoint" class="ApiPlatform\Core\Action\EntrypointAction">
             <argument type="service" id="api_platform.metadata.resource.name_collection_factory" />
+        </service>
+
+        <service id="api_platform.action.documentation" class="ApiPlatform\Core\Documentation\Action\DocumentationAction">
+            <argument type="service" id="api_platform.metadata.resource.name_collection_factory" />
+            <argument>%api_platform.title%</argument>
+            <argument>%api_platform.description%</argument>
+            <argument>%api_platform.version%</argument>
+            <argument>%api_platform.formats%</argument>
+        </service>
+
+        <service id="api_platform.action.exception" class="ApiPlatform\Core\Action\ExceptionAction">
+            <argument type="service" id="api_platform.serializer" />
+            <argument>%api_platform.error_formats%</argument>
+            <argument>%api_platform.exception_to_status%</argument>
+        </service>
+
+        <!-- Cache -->
+
+        <service id="api_platform.cache.route_name_resolver" parent="cache.system" public="false">
+            <tag name="cache.pool" />
         </service>
     </services>
 

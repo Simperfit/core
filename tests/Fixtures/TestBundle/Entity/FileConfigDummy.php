@@ -21,7 +21,7 @@ use Doctrine\ORM\Mapping as ORM;
 class FileConfigDummy
 {
     /**
-     * @var int The id.
+     * @var int The id
      *
      * @ORM\Column(type="integer")
      * @ORM\Id
@@ -30,11 +30,18 @@ class FileConfigDummy
     private $id;
 
     /**
-     * @var string The dummy name.
+     * @var string The dummy name
      *
      * @ORM\Column
      */
     private $name;
+
+    /**
+     * @var string
+     *
+     * @ORM\Column
+     */
+    private $foo;
 
     public function getId()
     {
@@ -49,5 +56,15 @@ class FileConfigDummy
     public function getName()
     {
         return $this->name;
+    }
+
+    public function setFoo($foo)
+    {
+        $this->foo = $foo;
+    }
+
+    public function getFoo()
+    {
+        return $this->foo;
     }
 }

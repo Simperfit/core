@@ -11,13 +11,19 @@
 
 namespace ApiPlatform\Core\Bridge\Symfony\Bundle\DependencyInjection;
 
+use ApiPlatform\Core\Exception\InvalidArgumentException;
+use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Serializer\Exception\ExceptionInterface;
 
 /**
  * The configuration of the bundle.
  *
  * @author Kévin Dunglas <dunglas@gmail.com>
+ * @author Baptiste Meyer <baptiste.meyer@gmail.com>
  */
 final class Configuration implements ConfigurationInterface
 {
@@ -34,8 +40,157 @@ final class Configuration implements ConfigurationInterface
                 ->scalarNode('title')->defaultValue('')->info('The title of the API.')->end()
                 ->scalarNode('description')->defaultValue('')->info('The description of the API.')->end()
                 ->scalarNode('version')->defaultValue('0.0.0')->info('The version of the API.')->end()
-                ->arrayNode('formats')
-                    ->defaultValue(['jsonld' => ['mime_types' => ['application/ld+json']]])
+                ->scalarNode('default_operation_path_resolver')->defaultValue('api_platform.operation_path_resolver.underscore')->info('Specify the default operation path resolver to use for generating resources operations path.')->end()
+                ->scalarNode('name_converter')->defaultNull()->info('Specify a name converter to use.')->end()
+                ->arrayNode('eager_loading')
+                    ->canBeDisabled()
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->booleanNode('enabled')->defaultTrue()->info('To enable or disable eager loading')->end()
+                        ->integerNode('max_joins')->defaultValue(30)->info('Max number of joined relations before EagerLoading throws a RuntimeException')->end()
+                        ->booleanNode('force_eager')->defaultTrue()->info('Force join on every relation. If disabled, it will only join relations having the EAGER fetch mode.')->end()
+                    ->end()
+                ->end()
+                ->booleanNode('enable_fos_user')->defaultValue(false)->info('Enable the FOSUserBundle integration.')->end()
+                ->booleanNode('enable_nelmio_api_doc')->defaultValue(false)->info('Enable the Nelmio Api doc integration.')->end()
+                ->booleanNode('enable_swagger')->defaultValue(true)->info('Enable the Swagger documentation and export.')->end()
+                ->booleanNode('enable_swagger_ui')->defaultValue(true)->info('Enable Swagger ui.')->end()
+
+                ->arrayNode('oauth')
+                    ->canBeEnabled()
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->booleanNode('enabled')->defaultFalse()->info('To enable or disable oauth')->end()
+                        ->scalarNode('clientId')->defaultValue('')->info('The oauth client id.')->end()
+                        ->scalarNode('clientSecret')->defaultValue('')->info('The oauth client secret.')->end()
+                        ->scalarNode('type')->defaultValue('oauth2')->info('The oauth client secret.')->end()
+                        ->scalarNode('flow')->defaultValue('application')->info('The oauth flow grant type.')->end()
+                        ->scalarNode('tokenUrl')->defaultValue('/oauth/v2/token')->info('The oauth token url.')->end()
+                        ->scalarNode('authorizationUrl')->defaultValue('/oauth/v2/auth')->info('The oauth authentication url.')->end()
+                        ->arrayNode('scopes')
+                            ->prototype('scalar')->end()
+                        ->end()
+                    ->end()
+                ->end()
+
+                ->arrayNode('collection')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('order')->defaultValue('ASC')->info('The default order of results.')->end() // Default ORDER is required for postgresql and mysql >= 5.7 when using LIMIT/OFFSET request
+                        ->scalarNode('order_parameter_name')->defaultValue('order')->cannotBeEmpty()->info('The name of the query parameter to order results.')->end()
+                        ->arrayNode('pagination')
+                            ->canBeDisabled()
+                            ->addDefaultsIfNotSet()
+                            ->children()
+                                ->booleanNode('enabled')->defaultTrue()->info('To enable or disable pagination for all resource collections by default.')->end()
+                                ->booleanNode('client_enabled')->defaultFalse()->info('To allow the client to enable or disable the pagination.')->end()
+                                ->booleanNode('client_items_per_page')->defaultFalse()->info('To allow the client to set the number of items per page.')->end()
+                                ->integerNode('items_per_page')->defaultValue(30)->info('The default number of items per page.')->end()
+                                ->integerNode('maximum_items_per_page')->defaultNull()->info('The maximum number of items per page.')->end()
+                                ->scalarNode('page_parameter_name')->defaultValue('page')->cannotBeEmpty()->info('The default name of the parameter handling the page number.')->end()
+                                ->scalarNode('enabled_parameter_name')->defaultValue('pagination')->cannotBeEmpty()->info('The name of the query parameter to enable or disable pagination.')->end()
+                                ->scalarNode('items_per_page_parameter_name')->defaultValue('itemsPerPage')->cannotBeEmpty()->info('The name of the query parameter to set the number of items per page.')->end()
+                            ->end()
+                        ->end()
+                    ->end()
+                ->end()
+
+                ->arrayNode('loader_paths')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->arrayNode('annotation')
+                            ->prototype('scalar')->end()
+                        ->end()
+                        ->arrayNode('yaml')
+                            ->prototype('scalar')->end()
+                        ->end()
+                        ->arrayNode('xml')
+                            ->prototype('scalar')->end()
+                        ->end()
+                    ->end()
+                ->end()
+            ->end();
+
+        $this->addExceptionToStatusSection($rootNode);
+
+        $this->addFormatSection($rootNode, 'formats', [
+            'jsonld' => ['mime_types' => ['application/ld+json']],
+            'json' => ['mime_types' => ['application/json']], // Swagger support
+            'html' => ['mime_types' => ['text/html']], // Swagger UI support
+        ]);
+        $this->addFormatSection($rootNode, 'error_formats', [
+            'jsonproblem' => ['mime_types' => ['application/problem+json']],
+            'jsonld' => ['mime_types' => ['application/ld+json']],
+        ]);
+
+        return $treeBuilder;
+    }
+
+    /**
+     * Adds an exception to status section.
+     *
+     * @param ArrayNodeDefinition $rootNode
+     *
+     * @throws InvalidConfigurationException
+     */
+    private function addExceptionToStatusSection(ArrayNodeDefinition $rootNode)
+    {
+        $rootNode
+            ->children()
+                ->arrayNode('exception_to_status')
+                    ->defaultValue([
+                        ExceptionInterface::class => Response::HTTP_BAD_REQUEST,
+                        InvalidArgumentException::class => Response::HTTP_BAD_REQUEST,
+                    ])
+                    ->info('The list of exceptions mapped to their HTTP status code.')
+                    ->normalizeKeys(false)
+                    ->useAttributeAsKey('exception_class')
+                    ->beforeNormalization()
+                        ->ifArray()
+                        ->then(function (array $exceptionToStatus) {
+                            foreach ($exceptionToStatus as &$httpStatusCode) {
+                                if (is_int($httpStatusCode)) {
+                                    continue;
+                                }
+
+                                if (defined($httpStatusCodeConstant = sprintf('%s::%s', Response::class, $httpStatusCode))) {
+                                    $httpStatusCode = constant($httpStatusCodeConstant);
+                                }
+                            }
+
+                            return $exceptionToStatus;
+                        })
+                    ->end()
+                    ->prototype('integer')->end()
+                    ->validate()
+                        ->ifArray()
+                        ->then(function (array $exceptionToStatus) {
+                            foreach ($exceptionToStatus as $httpStatusCode) {
+                                if ($httpStatusCode < 100 || $httpStatusCode >= 600) {
+                                    throw new InvalidConfigurationException(sprintf('The HTTP status code "%s" is not valid.', $httpStatusCode));
+                                }
+                            }
+
+                            return $exceptionToStatus;
+                        })
+                    ->end()
+                ->end()
+            ->end();
+    }
+
+    /**
+     * Adds a format section.
+     *
+     * @param ArrayNodeDefinition $rootNode
+     * @param string              $key
+     * @param array               $defaultValue
+     */
+    private function addFormatSection(ArrayNodeDefinition $rootNode, string $key, array $defaultValue)
+    {
+        $rootNode
+            ->children()
+                ->arrayNode($key)
+                    ->defaultValue($defaultValue)
                     ->info('The list of enabled formats. The first one will be the default.')
                     ->normalizeKeys(false)
                     ->useAttributeAsKey('format')
@@ -59,39 +214,6 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                     ->end()
                 ->end()
-                ->arrayNode('naming')
-                    ->addDefaultsIfNotSet()
-                    ->children()
-                        ->scalarNode('resource_path_naming_strategy')->defaultValue('api_platform.naming.resource_path_naming_strategy.underscore')->info('Specify the strategy to use for generating resource paths.')->end()
-                    ->end()
-                ->end()
-                ->scalarNode('name_converter')->defaultNull()->info('Specify a name converter to use.')->end()
-                ->booleanNode('enable_fos_user')->defaultValue(false)->info('Enable the FOSUserBundle integration.')->end()
-                ->booleanNode('enable_nelmio_api_doc')->defaultValue(false)->info('Enable the Nelmio Api doc integration.')->end()
-                ->booleanNode('enable_swagger')->defaultValue(true)->info('Enable the Swagger documentation and export.')->end()
-
-            ->arrayNode('collection')
-                    ->addDefaultsIfNotSet()
-                    ->children()
-                        ->scalarNode('order')->defaultNull()->info('The default order of results.')->end()
-                        ->scalarNode('order_parameter_name')->defaultValue('order')->cannotBeEmpty()->info('The name of the query parameter to order results.')->end()
-                        ->arrayNode('pagination')
-                            ->canBeDisabled()
-                            ->addDefaultsIfNotSet()
-                            ->children()
-                                ->booleanNode('enabled')->defaultTrue()->info('To enable or disable pagination for all resource collections by default.')->end()
-                                ->booleanNode('client_enabled')->defaultFalse()->info('To allow the client to enable or disable the pagination.')->end()
-                                ->booleanNode('client_items_per_page')->defaultFalse()->info('To allow the client to set the number of items per page.')->end()
-                                ->integerNode('items_per_page')->defaultValue(30)->info('The default number of items per page.')->end()
-                                ->scalarNode('page_parameter_name')->defaultValue('page')->cannotBeEmpty()->info('The default name of the parameter handling the page number.')->end()
-                                ->scalarNode('enabled_parameter_name')->defaultValue('pagination')->cannotBeEmpty()->info('The name of the query parameter to enable or disable pagination.')->end()
-                                ->scalarNode('items_per_page_parameter_name')->defaultValue('itemsPerPage')->cannotBeEmpty()->info('The name of the query parameter to set the number of items per page.')->end()
-                            ->end()
-                        ->end()
-                    ->end()
-                ->end()
             ->end();
-
-        return $treeBuilder;
     }
 }

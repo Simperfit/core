@@ -2,68 +2,53 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>{{ title }} - API Platform</title>
+    <title>{% if title %}{{ title }} - {% endif %}API Platform</title>
 
-    <link rel="icon" type="image/png" href="{{ asset('bundles/apiplatform/swagger-ui/images/favicon-32x32.png') }}" sizes="32x32">
-    <link rel="icon" type="image/png" href="{{ asset('bundles/apiplatform/swagger-ui/images/favicon-16x16.png') }}" sizes="16x16">
     <link href="{{ asset('bundles/apiplatform/swagger-ui/css/typography.css') }}" media="screen" rel="stylesheet">
     <link href="{{ asset('bundles/apiplatform/swagger-ui/css/reset.css') }}" media="screen" rel="stylesheet">
     <link href="{{ asset('bundles/apiplatform/swagger-ui/css/screen.css') }}" media="screen" rel="stylesheet">
     <link href="{{ asset('bundles/apiplatform/swagger-ui/css/reset.css') }}" media="print" rel="stylesheet">
     <link href="{{ asset('bundles/apiplatform/swagger-ui/css/print.css') }}" media="print" rel="stylesheet">
+
+    <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/object-assign-pollyfill.js') }}"></script>
     <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/jquery-1.8.0.min.js') }}"></script>
     <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/jquery.slideto.min.js') }}"></script>
     <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/jquery.wiggle.min.js') }}"></script>
     <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/jquery.ba-bbq.min.js') }}"></script>
-    <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/handlebars-2.0.0.js') }}"></script>
-    <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/underscore-min.js') }}"></script>
+    <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/handlebars-4.0.5.js') }}"></script>
+    <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/lodash.min.js') }}"></script>
     <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/backbone-min.js') }}"></script>
     <script src="{{ asset('bundles/apiplatform/swagger-ui/swagger-ui.min.js') }}"></script>
-    <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/highlight.7.3.pack.js') }}"></script>
+    <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/highlight.9.1.0.pack.js') }}"></script>
     <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/jsoneditor.min.js') }}"></script>
     <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/marked.js') }}"></script>
     <script src="{{ asset('bundles/apiplatform/swagger-ui/lib/swagger-oauth.js') }}"></script>
+    <script src="{{ asset('bundles/apiplatform/init-swagger-ui.js') }}"></script>
 
-    <script>
-        $(function () {
-            window.swaggerUi = new SwaggerUi({
-                url: '{{ path('api_swagger_doc') }}',
-                dom_id: 'swagger-ui-container',
-                supportedSubmitMethods: ['get', 'post', 'put', 'delete'],
-                onComplete: function(swaggerApi, swaggerUi){
-                    $('pre code').each(function(i, e) {
-                        hljs.highlightBlock(e)
-                    });
-                },
-                onFailure: function(data) {
-                    log('Unable to Load SwaggerUI');
-                },
-                docExpansion: 'none',
-                jsonEditor: false,
-                apisSorter: 'alpha',
-                defaultModelRendering: 'schema',
-                showRequestHeaders: true
-            });
-
-            window.swaggerUi.load();
-
-            function log() {
-                if ('console' in window) {
-                    console.log.apply(console, arguments);
-                }
-            }
-        });
-    </script>
+    {# json_encode(65) is for JSON_UNESCAPED_SLASHES|JSON_HEX_TAG to avoid JS XSS #}
+    <script id="swagger-data" type="application/json">{{ swagger_data|json_encode(65)|raw }}</script>
 </head>
 
 <body class="swagger-section">
-<div id="header">
+<div id="header" style="background-color: #253032; height: 35px">
     <div class="swagger-ui-wrap">
-        <a id="logo" href="https://api-platform.com">API Platform</a>
+        <a id="logo" href="https://api-platform.com"><img height="48" src="{{ asset('bundles/apiplatform/logo-header.svg') }}" alt="API Platform" style="position: relative; right: 10px"></a>
     </div>
 </div>
 
 <div id="message-bar" class="swagger-ui-wrap" data-sw-translate>&nbsp;</div>
 <div id="swagger-ui-container" class="swagger-ui-wrap"></div>
+
+<div class="swagger-ui-wrap">
+    <div class="container">
+        <div id="formats" class="footer" style="text-align: right">
+            Available formats:
+            {% for format in formats|keys %}
+                <a href="{{ path(app.request.attributes.get('_route'), app.request.attributes.get('_route_params')|merge({'_format': format})) }}">{{ format }}</a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
 </body>
 </html>

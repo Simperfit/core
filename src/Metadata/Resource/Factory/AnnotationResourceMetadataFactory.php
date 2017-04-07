@@ -13,8 +13,6 @@ namespace ApiPlatform\Core\Metadata\Resource\Factory;
 
 use ApiPlatform\Core\Annotation\ApiResource;
 use ApiPlatform\Core\Exception\ResourceClassNotFoundException;
-use ApiPlatform\Core\Metadata\Resource\Operation;
-use ApiPlatform\Core\Metadata\Resource\PaginationMetadata;
 use ApiPlatform\Core\Metadata\Resource\ResourceMetadata;
 use Doctrine\Common\Annotations\Reader;
 
@@ -37,7 +35,7 @@ final class AnnotationResourceMetadataFactory implements ResourceMetadataFactory
     /**
      * {@inheritdoc}
      */
-    public function create(string $resourceClass) : ResourceMetadata
+    public function create(string $resourceClass): ResourceMetadata
     {
         $parentResourceMetadata = null;
         if ($this->decorated) {
@@ -54,7 +52,11 @@ final class AnnotationResourceMetadataFactory implements ResourceMetadataFactory
             return $this->handleNotFound($parentResourceMetadata, $resourceClass);
         }
 
-        $resourceAnnotation = $this->reader->getClassAnnotation($reflectionClass, ApiResource::class);
+        $resourceAnnotation = $this->reader->getClassAnnotation(
+            $reflectionClass,
+            ApiResource::class
+        );
+
         if (null === $resourceAnnotation) {
             return $this->handleNotFound($parentResourceMetadata, $resourceClass);
         }
@@ -72,7 +74,10 @@ final class AnnotationResourceMetadataFactory implements ResourceMetadataFactory
      *
      * @return ResourceMetadata
      */
-    private function handleNotFound(ResourceMetadata $parentPropertyMetadata = null, string $resourceClass) : ResourceMetadata
+    private function handleNotFound(
+        ResourceMetadata $parentPropertyMetadata = null,
+        string $resourceClass
+    ): ResourceMetadata
     {
         if (null !== $parentPropertyMetadata) {
             return $parentPropertyMetadata;
@@ -81,7 +86,10 @@ final class AnnotationResourceMetadataFactory implements ResourceMetadataFactory
         throw new ResourceClassNotFoundException(sprintf('Resource "%s" not found.', $resourceClass));
     }
 
-    private function createMetadata(ApiResource $annotation, ResourceMetadata $parentResourceMetadata = null) : ResourceMetadata
+    private function createMetadata(
+        ApiResource $annotation,
+        ResourceMetadata $parentResourceMetadata = null
+    ): ResourceMetadata
     {
         if (!$parentResourceMetadata) {
             return new ResourceMetadata(
@@ -96,50 +104,14 @@ final class AnnotationResourceMetadataFactory implements ResourceMetadataFactory
 
         $resourceMetadata = $parentResourceMetadata;
         foreach (['shortName', 'description', 'iri', 'itemOperations', 'collectionOperations', 'attributes'] as $property) {
-            $resourceMetadata = $this->createWith($resourceMetadata, $property, $annotation->$property);
+            $resourceMetadata = $this->createWith(
+                $resourceMetadata,
+                $property,
+                $annotation->$property
+            );
         }
-
-        $resourceMetadata = $this->createWith($resourceMetadata, 'collectionOperations', $this->createOperations($annotation->collectionOperations));
-        $resourceMetadata = $this->createWith($resourceMetadata, 'itemOperations', $this->createOperations($annotation->itemOperations));
 
         return $resourceMetadata;
-    }
-
-    /**
-     * Creates operation and pagination metadata from annotations.
-     *
-     * @param array|null $operationAnnotations
-     *
-     * @return array|null
-     */
-    private function createOperations(array $operationAnnotations = null)
-    {
-        if (null === $operationAnnotations) {
-            return;
-        }
-
-        $operations = [];
-        foreach ($operationAnnotations as $operationName => $operationAnnotation) {
-            if ($paginationAnnotation = $operationAnnotation->pagination) {
-                $paginationMetadata = new PaginationMetadata(
-                    $paginationAnnotation->enabled,
-                    (float) $paginationAnnotation->itemsPerPage,
-                    $paginationAnnotation->clientControlEnabled
-                );
-            } else {
-                $paginationMetadata = null;
-            }
-
-            $operation = new Operation(
-                $operationAnnotation->filters,
-                $paginationMetadata,
-                $operationAnnotation->attributes
-            );
-
-            $operations[$operationName] = $operation;
-        }
-
-        return $operations;
     }
 
     /**
@@ -151,15 +123,19 @@ final class AnnotationResourceMetadataFactory implements ResourceMetadataFactory
      *
      * @return ResourceMetadata
      */
-    private function createWith(ResourceMetadata $resourceMetadata, string $property, $value) : ResourceMetadata
+    private function createWith(
+        ResourceMetadata $resourceMetadata,
+        string $property,
+        $value
+    ): ResourceMetadata
     {
-        $getter = 'get'.ucfirst($property);
+        $getter = 'get' . ucfirst($property);
 
         if (null !== $resourceMetadata->$getter()) {
             return $resourceMetadata;
         }
 
-        $wither = 'with'.ucfirst($property);
+        $wither = 'with' . ucfirst($property);
 
         return $resourceMetadata->$wither($value);
     }

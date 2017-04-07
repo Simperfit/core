@@ -9,7 +9,7 @@ Feature: Order filter on collections
     When I send a "GET" request to "/dummies?order[id]=asc"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -54,8 +54,11 @@ Feature: Order filter on collections
           "minItems": 3
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?order\\[id\\]=asc$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?order%5Bid%5D=asc"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -65,7 +68,7 @@ Feature: Order filter on collections
     When I send a "GET" request to "/dummies?order[id]=desc"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -110,8 +113,11 @@ Feature: Order filter on collections
           "minItems": 3
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?order\\[id\\]=desc"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?order%5Bid%5D=desc"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -121,7 +127,7 @@ Feature: Order filter on collections
     When I send a "GET" request to "/dummies?order[name]=asc"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -166,8 +172,11 @@ Feature: Order filter on collections
           "minItems": 3
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?order\\[name\\]=asc$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?order%5Bname%5D=asc"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -177,7 +186,7 @@ Feature: Order filter on collections
     When I send a "GET" request to "/dummies?order[name]=desc"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -222,8 +231,11 @@ Feature: Order filter on collections
           "minItems": 3
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?order\\[name\\]=desc$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?order%5Bname%5D=desc"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -233,7 +245,7 @@ Feature: Order filter on collections
     When I send a "GET" request to "/dummies?order[name]"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -278,8 +290,11 @@ Feature: Order filter on collections
           "minItems": 3
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?order\\[name\\]$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?order%5Bname%5D="},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -290,7 +305,7 @@ Feature: Order filter on collections
     When I send a "GET" request to "/dummies?order[relatedDummy]=asc"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -335,8 +350,11 @@ Feature: Order filter on collections
           "minItems": 3
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?order\\[relatedDummy\\]=asc$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?order%5BrelatedDummy%5D=asc"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -347,7 +365,7 @@ Feature: Order filter on collections
     When I send a "GET" request to "/dummies?order[alias]=asc"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -392,8 +410,11 @@ Feature: Order filter on collections
           "minItems": 3
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?order\\[alias\\]=asc$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?order%5Balias%5D=asc"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -402,7 +423,7 @@ Feature: Order filter on collections
     When I send a "GET" request to "/dummies?order[alias]=desc"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -447,8 +468,11 @@ Feature: Order filter on collections
           "minItems": 3
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?order\\[alias\\]=desc$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?order%5Balias%5D=desc"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -457,7 +481,7 @@ Feature: Order filter on collections
     When I send a "GET" request to "/dummies?order[unknown]=asc"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -502,8 +526,11 @@ Feature: Order filter on collections
           "minItems": 3
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?order\\[unknown\\]=asc$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?order%5Bunknown%5D=asc"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }
@@ -512,7 +539,7 @@ Feature: Order filter on collections
     When I send a "GET" request to "/dummies?order[unknown]=desc"
     Then the response status code should be 200
     And the response should be in JSON
-    And the header "Content-Type" should be equal to "application/ld+json"
+    And the header "Content-Type" should be equal to "application/ld+json; charset=utf-8"
     And the JSON should be valid according to this schema:
     """
     {
@@ -557,8 +584,11 @@ Feature: Order filter on collections
           "minItems": 3
         },
         "hydra:view": {
-          "@id": {"pattern": "^/dummies\\?order\\[unknown\\]=desc$"},
-          "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          "type": "object",
+          "properties": {
+            "@id": {"pattern": "^/dummies\\?order%5Bunknown%5D=desc"},
+            "@type": {"pattern": "^hydra:PartialCollectionView$"}
+          }
         }
       }
     }

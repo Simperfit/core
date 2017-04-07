@@ -5,9 +5,10 @@ default:
         - 'FeatureContext': { doctrine: '@doctrine' }
         - 'HydraContext'
         - 'SwaggerContext'
+        - 'JsonApiContext'
         - 'Behat\MinkExtension\Context\MinkContext'
-        - 'Sanpi\Behatch\Context\RestContext'
-        - 'Sanpi\Behatch\Context\JsonContext'
+        - 'Behatch\Context\RestContext'
+        - 'Behatch\Context\JsonContext'
   extensions:
     'Behat\Symfony2Extension':
       kernel:
@@ -20,4 +21,17 @@ default:
       sessions:
         default:
           symfony2: ~
-    'Sanpi\Behatch\Extension': ~
+    'Behatch\Extension': ~
+
+coverage:
+  suites:
+    default:
+      contexts:
+      contexts:
+        - 'FeatureContext': { doctrine: '@doctrine' }
+        - 'HydraContext'
+        - 'SwaggerContext'
+        - 'CoverageContext'
+        - 'Behat\MinkExtension\Context\MinkContext'
+        - 'Behatch\Context\RestContext'
+        - 'Behatch\Context\JsonContext'

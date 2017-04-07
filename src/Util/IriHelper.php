@@ -20,17 +20,23 @@ use ApiPlatform\Core\Exception\InvalidArgumentException;
  *
  * @internal
  */
-abstract class IriHelper
+final class IriHelper
 {
+    private function __construct()
+    {
+    }
+
     /**
      * Parses and standardizes the request IRI.
      *
      * @param string $iri
      * @param string $pageParameterName
      *
+     * @throws InvalidArgumentException
+     *
      * @return array
      */
-    public static function parseIri(string $iri, string $pageParameterName) : array
+    public static function parseIri(string $iri, string $pageParameterName): array
     {
         $parts = parse_url($iri);
         if (false === $parts) {
@@ -58,7 +64,7 @@ abstract class IriHelper
      *
      * @return string
      */
-    public static function createIri(array $parts, array $parameters, string $pageParameterName, float $page = null) : string
+    public static function createIri(array $parts, array $parameters, string $pageParameterName, float $page = null): string
     {
         if (null !== $page) {
             $parameters[$pageParameterName] = $page;

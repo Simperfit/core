@@ -36,7 +36,7 @@ final class ResourceClassResolver implements ResourceClassResolverInterface
     /**
      * {@inheritdoc}
      */
-    public function getResourceClass($value, string $resourceClass = null, bool $strict = false) : string
+    public function getResourceClass($value, string $resourceClass = null, bool $strict = false): string
     {
         if (is_object($value) && !$value instanceof PaginatorInterface) {
             $typeToFind = $type = $this->getObjectClass($value);
@@ -49,8 +49,8 @@ final class ResourceClassResolver implements ResourceClassResolverInterface
             $typeToFind = $type = $resourceClass;
         }
 
-        if (!$this->isResourceClass($typeToFind) || ($strict && isset($type) && $resourceClass !== $type)) {
-            if (is_subclass_of($type, $resourceClass) && $this->isResourceClass($type)) {
+        if (($strict && isset($type) && $resourceClass !== $type) || !$this->isResourceClass($typeToFind)) {
+            if (is_subclass_of($type, $resourceClass) && $this->isResourceClass($resourceClass)) {
                 return $type;
             }
 
@@ -63,7 +63,7 @@ final class ResourceClassResolver implements ResourceClassResolverInterface
     /**
      * {@inheritdoc}
      */
-    public function isResourceClass(string $type) : bool
+    public function isResourceClass(string $type): bool
     {
         foreach ($this->resourceNameCollectionFactory->create() as $resourceClass) {
             if ($type === $resourceClass) {

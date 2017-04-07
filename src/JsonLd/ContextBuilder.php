@@ -25,6 +25,8 @@ use Symfony\Component\Serializer\NameConverter\NameConverterInterface;
  */
 final class ContextBuilder implements ContextBuilderInterface
 {
+    const FORMAT = 'jsonld';
+
     private $resourceNameCollectionFactory;
     private $resourceMetadataFactory;
     private $propertyNameCollectionFactory;
@@ -49,10 +51,10 @@ final class ContextBuilder implements ContextBuilderInterface
     /**
      * {@inheritdoc}
      */
-    public function getBaseContext(int $referenceType = UrlGeneratorInterface::ABS_URL) : array
+    public function getBaseContext(int $referenceType = UrlGeneratorInterface::ABS_URL): array
     {
         return [
-            '@vocab' => $this->urlGenerator->generate('api_hydra_doc', [], UrlGeneratorInterface::ABS_URL).'#',
+            '@vocab' => $this->urlGenerator->generate('api_doc', ['_format' => self::FORMAT], UrlGeneratorInterface::ABS_URL).'#',
             'hydra' => self::HYDRA_NS,
         ];
     }
@@ -60,7 +62,7 @@ final class ContextBuilder implements ContextBuilderInterface
     /**
      * {@inheritdoc}
      */
-    public function getEntrypointContext(int $referenceType = UrlGeneratorInterface::ABS_PATH) : array
+    public function getEntrypointContext(int $referenceType = UrlGeneratorInterface::ABS_PATH): array
     {
         $context = $this->getBaseContext($referenceType);
 
@@ -81,42 +83,52 @@ final class ContextBuilder implements ContextBuilderInterface
     /**
      * {@inheritdoc}
      */
-    public function getResourceContext(string $resourceClass, int $referenceType = UrlGeneratorInterface::ABS_PATH) : array
+    public function getResourceContext(string $resourceClass, int $referenceType = UrlGeneratorInterface::ABS_PATH): array
     {
-        $context = $this->getBaseContext($referenceType, $referenceType);
+        $context = $this->getBaseContext($referenceType);
         $resourceMetadata = $this->resourceMetadataFactory->create($resourceClass);
         $prefixedShortName = sprintf('#%s', $resourceMetadata->getShortName());
 
         foreach ($this->propertyNameCollectionFactory->create($resourceClass) as $propertyName) {
             $propertyMetadata = $this->propertyMetadataFactory->create($resourceClass, $propertyName);
 
-            if ($propertyMetadata->isIdentifier() && !$propertyMetadata->isWritable()) {
+            if ($propertyMetadata->isIdentifier() && true !== $propertyMetadata->isWritable()) {
                 continue;
             }
 
             $convertedName = $this->nameConverter ? $this->nameConverter->normalize($propertyName) : $propertyName;
+            $jsonldContext = $propertyMetadata->getAttributes()['jsonld_context'] ?? [];
 
             if (!$id = $propertyMetadata->getIri()) {
                 $id = sprintf('%s/%s', $prefixedShortName, $convertedName);
             }
 
-            if (!$propertyMetadata->isReadableLink()) {
-                $context[$convertedName] = [
+            if (true !== $propertyMetadata->isReadableLink()) {
+                $jsonldContext += [
                     '@id' => $id,
                     '@type' => '@id',
                 ];
-            } else {
+            }
+
+            if (empty($jsonldContext)) {
                 $context[$convertedName] = $id;
+            } else {
+                $context[$convertedName] = $jsonldContext + [
+                    '@id' => $id,
+                ];
             }
         }
 
         return $context;
     }
 
-    public function getResourceContextUri(string $resourceClass, int $referenceType = UrlGeneratorInterface::ABS_PATH) : string
+    /**
+     * {@inheritdoc}
+     */
+    public function getResourceContextUri(string $resourceClass, int $referenceType = UrlGeneratorInterface::ABS_PATH): string
     {
         $resourceMetadata = $this->resourceMetadataFactory->create($resourceClass);
 
-        return $this->urlGenerator->generate('api_jsonld_context', ['shortName' => $resourceMetadata->getShortName()]);
+        return $this->urlGenerator->generate('api_jsonld_context', ['shortName' => $resourceMetadata->getShortName()], $referenceType);
     }
 }

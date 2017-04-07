@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-namespace ApiPlatform\Core\tests\Hydra;
+namespace ApiPlatform\Core\tests\Hydra\Serializer;
 
 use ApiPlatform\Core\Api\IriConverterInterface;
 use ApiPlatform\Core\Api\ResourceClassResolverInterface;
@@ -24,7 +24,6 @@ use ApiPlatform\Core\Metadata\Resource\Factory\ResourceMetadataFactoryInterface;
 use ApiPlatform\Core\Metadata\Resource\ResourceMetadata;
 use ApiPlatform\Core\Tests\Fixtures\TestBundle\Entity\Dummy;
 use Prophecy\Argument;
-use Symfony\Component\PropertyInfo\Type;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 
@@ -122,8 +121,6 @@ class ItemNormalizerTest extends \PHPUnit_Framework_TestCase
                      '@id' => '/dummies/1988',
                      '@type' => 'Dummy',
                      'name' => 'hello',
-
-
         ];
         $this->assertEquals($expected, $normalizer->normalize($dummy));
     }

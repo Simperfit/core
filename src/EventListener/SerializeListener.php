@@ -50,9 +50,7 @@ final class SerializeListener
             return;
         }
 
-        try {
-            $attributes = RequestAttributesExtractor::extractAttributes($request);
-        } catch (RuntimeException $e) {
+        if (!$attributes = RequestAttributesExtractor::extractAttributes($request)) {
             $this->serializeRawData($event, $request, $controllerResult);
 
             return;
@@ -70,6 +68,8 @@ final class SerializeListener
      * @param GetResponseForControllerResultEvent $event
      * @param Request                             $request
      * @param object                              $controllerResult
+     *
+     * @throws RuntimeException
      */
     private function serializeRawData(GetResponseForControllerResultEvent $event, Request $request, $controllerResult)
     {
@@ -84,7 +84,7 @@ final class SerializeListener
         }
 
         if (!$this->serializer instanceof EncoderInterface) {
-            throw new RuntimeException('The serializer instance must implements the "%s" interface.', EncoderInterface::class);
+            throw new RuntimeException(sprintf('The serializer instance must implements the "%s" interface.', EncoderInterface::class));
         }
 
         $event->setControllerResult($this->serializer->encode($controllerResult, $request->getRequestFormat()));

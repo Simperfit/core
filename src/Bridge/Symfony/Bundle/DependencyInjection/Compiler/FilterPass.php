@@ -27,6 +27,8 @@ final class FilterPass implements CompilerPassInterface
 {
     /**
      * {@inheritdoc}
+     *
+     * @throws RuntimeException
      */
     public function process(ContainerBuilder $container)
     {
@@ -34,7 +36,7 @@ final class FilterPass implements CompilerPassInterface
         foreach ($container->findTaggedServiceIds('api_platform.filter') as $serviceId => $tags) {
             foreach ($tags as $tag) {
                 if (!isset($tag['id'])) {
-                    throw new RuntimeException('Filter tags must have an "id" property.');
+                    $tag['id'] = $serviceId;
                 }
 
                 $filters[$tag['id']] = new Reference($serviceId);

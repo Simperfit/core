@@ -14,7 +14,6 @@ namespace ApiPlatform\Core\EventListener;
 use ApiPlatform\Core\DataProvider\CollectionDataProviderInterface;
 use ApiPlatform\Core\DataProvider\ItemDataProviderInterface;
 use ApiPlatform\Core\DataProvider\PaginatorInterface;
-use ApiPlatform\Core\Exception\RuntimeException;
 use ApiPlatform\Core\Util\RequestAttributesExtractor;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
@@ -46,9 +45,10 @@ final class ReadListener
     public function onKernelRequest(GetResponseEvent $event)
     {
         $request = $event->getRequest();
-        try {
-            $attributes = RequestAttributesExtractor::extractAttributes($request);
-        } catch (RuntimeException $e) {
+        if (
+            !($attributes = RequestAttributesExtractor::extractAttributes($request))
+            || !$attributes['receive']
+        ) {
             return;
         }
 
@@ -91,7 +91,7 @@ final class ReadListener
     private function getItemData(Request $request, array $attributes)
     {
         $id = $request->attributes->get('id');
-        $data = $this->itemDataProvider->getItem($attributes['resource_class'], $id, $attributes['item_operation_name'], true);
+        $data = $this->itemDataProvider->getItem($attributes['resource_class'], $id, $attributes['item_operation_name']);
 
         if (null === $data) {
             throw new NotFoundHttpException('Not Found');

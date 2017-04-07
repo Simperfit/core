@@ -11,16 +11,9 @@
 
 namespace ApiPlatform\Core\Hal\Serializer;
 
-use ApiPlatform\Core\Api\IriConverterInterface;
-use ApiPlatform\Core\Api\ResourceClassResolverInterface;
 use ApiPlatform\Core\Exception\RuntimeException;
-use ApiPlatform\Core\Metadata\Property\Factory\PropertyMetadataFactoryInterface;
-use ApiPlatform\Core\Metadata\Property\Factory\PropertyNameCollectionFactoryInterface;
-use ApiPlatform\Core\Metadata\Resource\Factory\ResourceMetadataFactoryInterface;
 use ApiPlatform\Core\Serializer\AbstractItemNormalizer;
 use ApiPlatform\Core\Serializer\ContextTrait;
-use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
-use Symfony\Component\Serializer\NameConverter\NameConverterInterface;
 
 /**
  * Converts between objects and array including HAL metadata.
@@ -33,15 +26,7 @@ final class ItemNormalizer extends AbstractItemNormalizer
 
     const FORMAT = 'jsonhal';
 
-    private $resourceMetadataFactory;
     private $componentsCache = [];
-
-    public function __construct(ResourceMetadataFactoryInterface $resourceMetadataFactory, PropertyNameCollectionFactoryInterface $propertyNameCollectionFactory, PropertyMetadataFactoryInterface $propertyMetadataFactory, IriConverterInterface $iriConverter, ResourceClassResolverInterface $resourceClassResolver, PropertyAccessorInterface $propertyAccessor = null, NameConverterInterface $nameConverter = null)
-    {
-        parent::__construct($propertyNameCollectionFactory, $propertyMetadataFactory, $iriConverter, $resourceClassResolver, $propertyAccessor, $nameConverter);
-
-        $this->resourceMetadataFactory = $resourceMetadataFactory;
-    }
 
     /**
      * {@inheritdoc}
@@ -56,20 +41,19 @@ final class ItemNormalizer extends AbstractItemNormalizer
      */
     public function normalize($object, $format = null, array $context = [])
     {
-        $context['cache_key'] = $this->getCacheKey($format, $context);
+        $context['cache_key'] = $this->getHalCacheKey($format, $context);
 
         $rawData = parent::normalize($object, $format, $context);
         if (!is_array($rawData)) {
             return $rawData;
         }
 
-        $data['_links']['self']['href'] = $this->iriConverter->getIriFromItem($object);
-
+        $data = ['_links' => ['self' => ['href' => $this->iriConverter->getIriFromItem($object)]]];
         $components = $this->getComponents($object, $format, $context);
         $data = $this->populateRelation($data, $object, $format, $context, $components, 'links');
         $data = $this->populateRelation($data, $object, $format, $context, $components, 'embedded');
 
-        return array_merge($data, $rawData);
+        return $data + $rawData;
     }
 
     /**
@@ -82,6 +66,8 @@ final class ItemNormalizer extends AbstractItemNormalizer
 
     /**
      * {@inheritdoc}
+     *
+     * @throws RuntimeException
      */
     public function denormalize($data, $class, $format = null, array $context = [])
     {
@@ -164,7 +150,7 @@ final class ItemNormalizer extends AbstractItemNormalizer
      *
      * @return array
      */
-    private function populateRelation(array $data, $object, string $format = null, array $context, array $components, string $type) : array
+    private function populateRelation(array $data, $object, string $format = null, array $context, array $components, string $type): array
     {
         $key = '_'.$type;
         foreach ($components[$type] as $relation) {
@@ -204,9 +190,9 @@ final class ItemNormalizer extends AbstractItemNormalizer
      *
      * @return string
      */
-    private function getRelationIri($rel) : string
+    private function getRelationIri($rel): string
     {
-        return isset($rel['_links']['self']['href']) ? $rel['_links']['self']['href'] : $rel;
+        return $rel['_links']['self']['href'] ?? $rel;
     }
 
     /**
@@ -217,7 +203,7 @@ final class ItemNormalizer extends AbstractItemNormalizer
      *
      * @return bool|string
      */
-    private function getCacheKey(string $format = null, array $context)
+    private function getHalCacheKey(string $format = null, array $context)
     {
         try {
             return md5($format.serialize($context));
